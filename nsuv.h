@@ -337,20 +337,26 @@ class ns_timer : public ns_handle<uv_timer_t, ns_timer> {
 };
 
 
-/* ns_prepare */
+/* ns_check, ns_idle, ns_prepare */
 
-class ns_prepare : public ns_handle<uv_prepare_t, ns_prepare> {
- public:
-  inline NSUV_WUR int init(uv_loop_t* loop);
-  inline NSUV_WUR int start(void(*cb)(ns_prepare*));
-  template <typename D_T>
-  inline NSUV_WUR int start(void(*cb)(ns_prepare*, D_T*), D_T* data);
-  inline NSUV_WUR int stop();
+#define NSUV_LOOP_WATCHER_DEFINE(name)                                        \
+  class ns_##name : public ns_handle<uv_##name##_t, ns_##name> {              \
+   public:                                                                    \
+    inline NSUV_WUR int init(uv_loop_t* loop);                                \
+    inline NSUV_WUR int start(void(*cb)(ns_##name*));                         \
+    template <typename D_T>                                                   \
+    inline NSUV_WUR int start(void(*cb)(ns_##name*, D_T*), D_T* data);        \
+    inline NSUV_WUR int stop();                                               \
+   private:                                                                   \
+    void(*name##_cb_ptr_)() = nullptr;                                        \
+    void* name##_cb_data_ = nullptr;                                          \
+  };
 
- private:
-  void(*prepare_cb_ptr_)() = nullptr;
-  void* prepare_cb_data_ = nullptr;
-};
+NSUV_LOOP_WATCHER_DEFINE(check)
+NSUV_LOOP_WATCHER_DEFINE(idle)
+NSUV_LOOP_WATCHER_DEFINE(prepare)
+
+#undef NSUV_LOOP_WATCHER_DEFINE
 
 
 /* ns_udp */

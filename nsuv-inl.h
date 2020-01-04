@@ -587,37 +587,47 @@ size_t ns_timer::get_repeat() {
   return uv_timer_get_repeat(uv_handle());
 }
 
-/* ns_prepare */
 
-int ns_prepare::init(uv_loop_t* loop) {
-  return uv_prepare_init(loop, uv_handle());
-}
+/* ns_check, ns_idle, ns_prepare */
 
-int ns_prepare::start(void(*cb)(ns_prepare*)) {
-  auto lcb = [](uv_prepare_t* handle) {
-    ns_prepare* wrap = ns_prepare::cast(handle);
-    auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->prepare_cb_ptr_);
-    cb_(wrap);
-  };
-  prepare_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  return uv_prepare_start(uv_handle(), NSUV_GET_CB(cb, lcb));
-}
+#define NSUV_LOOP_WATCHER_DEFINE(name)                                        \
+int ns_##name::init(uv_loop_t* loop) {                                        \
+  return uv_##name##_init(loop, uv_handle());                                 \
+}                                                                             \
+                                                                              \
+int ns_##name::start(void(*cb)(ns_##name*)) {                                 \
+  if (is_active()) return 0;                                                  \
+  auto lcb = [](uv_##name##_t* handle) {                                      \
+    ns_##name* wrap = ns_##name::cast(handle);                                \
+    auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->name##_cb_ptr_);         \
+    cb_(wrap);                                                                \
+  };                                                                          \
+  name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
+  return uv_##name##_start(uv_handle(), NSUV_GET_CB(cb, lcb));                \
+}                                                                             \
+                                                                              \
+template <typename D_T>                                                       \
+int ns_##name::start(void(*cb)(ns_##name*, D_T*), D_T* data) {                \
+  if (is_active()) return 0;                                                  \
+  auto lcb = [](uv_##name##_t* handle) {                                      \
+    ns_##name* wrap = ns_##name::cast(handle);                                \
+    auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->name##_cb_ptr_);         \
+    cb_(wrap, static_cast<D_T*>(wrap->name##_cb_data_));                      \
+  };                                                                          \
+  name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
+  name##_cb_data_ = data;                                                     \
+  return uv_##name##_start(uv_handle(), NSUV_GET_CB(cb, lcb));                \
+}                                                                             \
+                                                                              \
+int ns_##name::stop() {                                                       \
+  return uv_##name##_stop(uv_handle());                                       \
+}                                                                             \
 
-template <typename D_T>
-int ns_prepare::start(void(*cb)(ns_prepare*, D_T*), D_T* data) {
-  auto lcb = [](uv_prepare_t* handle) {
-    ns_prepare* wrap = ns_prepare::cast(handle);
-    auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->prepare_cb_ptr_);
-    cb_(wrap, static_cast<D_T*>(wrap->prepare_cb_data_));
-  };
-  prepare_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  prepare_cb_data_ = data;
-  return uv_prepare_start(uv_handle(), NSUV_GET_CB(cb, lcb));
-}
+NSUV_LOOP_WATCHER_DEFINE(check)
+NSUV_LOOP_WATCHER_DEFINE(idle)
+NSUV_LOOP_WATCHER_DEFINE(prepare)
 
-int ns_prepare::stop() {
-  return uv_prepare_stop(uv_handle());
-}
+#undef NSUV_LOOP_WATCHER_DEFINE
 
 
 /* ns_udp */
