@@ -228,6 +228,8 @@ template <class UV_T, class H_T>
 class ns_stream : public ns_handle<UV_T, H_T> {
  public:
   uv_stream_t* base_stream();
+  // TODO(trevnorris): Running listen() on an already listening socket is UB,
+  // but the UB here does not match the UB in libuv.
   inline NSUV_WUR int listen(int backlog, void(*cb)(H_T*, int));
   template <typename D_T>
   inline NSUV_WUR int listen(int backlog,
