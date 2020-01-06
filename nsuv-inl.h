@@ -4,6 +4,7 @@
 #include "./nsuv.h"
 #include <uv.h>
 
+#include <assert.h>
 #include <cstring>  // memcpy
 #include <new>  // nothrow
 #include <utility>  // move
@@ -260,10 +261,12 @@ void ns_handle<UV_T, H_T>::close() {
 
 template <class UV_T, class H_T>
 void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*)) {
+  assert(nullptr == close_cb_ptr_);
   auto lcb = [](uv_handle_t* handle) {
     H_T* wrap = H_T::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->close_cb_ptr_);
     cb_(wrap);
+    wrap->close_cb_ptr_ = nullptr;
   };
   close_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   uv_close(base_handle(), NSUV_GET_CB(cb, lcb));
@@ -272,10 +275,12 @@ void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*)) {
 template <class UV_T, class H_T>
 template <typename D_T>
 void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*, D_T*), D_T* data) {
+  assert(nullptr == close_cb_ptr_);
   auto lcb = [](uv_handle_t* handle) {
     H_T* wrap = H_T::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->close_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->close_cb_data_));
+    wrap->close_cb_ptr_ = nullptr;
   };
   close_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   close_cb_data_ = data;
@@ -333,10 +338,12 @@ uv_stream_t* ns_stream<UV_T, H_T>::base_stream() {
 
 template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::listen(int backlog, void(*cb)(H_T*, int)) {
+  assert(nullptr == listen_cb_ptr_);
   auto lcb = [](uv_stream_t* handle, int status) {
     auto* server = H_T::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(server->listen_cb_ptr_);
     cb_(server, status);
+    server->listen_cb_ptr_ = nullptr;
   };
   listen_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   return uv_listen(base_stream(), backlog, NSUV_GET_CB(cb, lcb));
@@ -347,10 +354,12 @@ template <typename D_T>
 int ns_stream<UV_T, H_T>::listen(int backlog,
                                  void(*cb)(H_T*, int, D_T*),
                                  D_T* data) {
+  assert(nullptr == listen_cb_ptr_);
   auto lcb = [](uv_stream_t* handle, int status) {
     auto* server = H_T::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(server->listen_cb_ptr_);
     cb_(server, status, static_cast<D_T*>(server->listen_cb_data_));
+    server->listen_cb_ptr_ = nullptr;
   };
   listen_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   listen_cb_data_ = data;
@@ -434,10 +443,12 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 /* ns_async */
 
 int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*)) {
+  assert(nullptr == async_cb_ptr_);
   auto lcb = [](uv_async_t* handle) {
     ns_async* wrap = ns_async::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->async_cb_ptr_);
     cb_(wrap);
+    wrap->async_cb_ptr_ = nullptr;
   };
   async_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   return uv_async_init(loop, uv_handle(), NSUV_GET_CB(cb, lcb));
@@ -445,10 +456,12 @@ int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*)) {
 
 template <typename D_T>
 int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*, D_T*), D_T* data) {
+  assert(nullptr == async_cb_ptr_);
   auto lcb = [](uv_async_t* handle) {
     auto* wrap = ns_async::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->async_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->async_cb_data_));
+    wrap->async_cb_ptr_ = nullptr;
   };
   async_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   async_cb_data_ = data;
@@ -471,10 +484,12 @@ int ns_poll::init_socket(uv_loop_t* loop, uv_os_sock_t socket) {
 }
 
 int ns_poll::start(int events, void(*cb)(ns_poll*, int, int)) {
+  assert(nullptr == poll_cb_ptr_);
   auto lcb = [](uv_poll_t* handle, int poll, int events) {
     ns_poll* wrap = ns_poll::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->poll_cb_ptr_);
     cb_(wrap, poll, events);
+    wrap->poll_cb_ptr_ = nullptr;
   };
   poll_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   return uv_poll_start(uv_handle(), events, NSUV_GET_CB(cb, lcb));
@@ -482,10 +497,12 @@ int ns_poll::start(int events, void(*cb)(ns_poll*, int, int)) {
 
 template <typename D_T>
 int ns_poll::start(int events, void(*cb)(ns_poll*, int, int, D_T*), D_T* data) {
+  assert(nullptr == poll_cb_ptr_);
   auto lcb = [](uv_poll_t* handle, int poll, int events) {
     ns_poll* wrap = ns_poll::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->poll_cb_ptr_);
     cb_(wrap, poll, events, static_cast<D_T*>(wrap->poll_cb_data_));
+    wrap->poll_cb_ptr_ = nullptr;
   };
   poll_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   poll_cb_data_ = data;
@@ -555,10 +572,12 @@ int ns_timer::init(uv_loop_t* loop) {
 }
 
 int ns_timer::start(void(*cb)(ns_timer*), uint64_t timeout, uint64_t repeat) {
+  assert(nullptr == timer_cb_ptr_);
   auto lcb = [](uv_timer_t* handle) {
     ns_timer* wrap = ns_timer::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->timer_cb_ptr_);
     cb_(wrap);
+    wrap->timer_cb_ptr_ = nullptr;
   };
   timer_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   return uv_timer_start(uv_handle(), NSUV_GET_CB(cb, lcb), timeout, repeat);
@@ -569,10 +588,12 @@ int ns_timer::start(void(*cb)(ns_timer*, D_T*),
                     uint64_t timeout,
                     uint64_t repeat,
                     D_T* data) {
+  assert(nullptr == timer_cb_ptr_);
   auto lcb = [](uv_timer_t* handle) {
     ns_timer* wrap = ns_timer::cast(handle);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->timer_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->timer_cb_data_));
+    wrap->timer_cb_ptr_ = nullptr;
   };
   timer_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   timer_cb_data_ = data;
@@ -597,10 +618,12 @@ int ns_##name::init(uv_loop_t* loop) {                                        \
                                                                               \
 int ns_##name::start(void(*cb)(ns_##name*)) {                                 \
   if (is_active()) return 0;                                                  \
+  assert(nullptr == name##_cb_ptr_);                                          \
   auto lcb = [](uv_##name##_t* handle) {                                      \
     ns_##name* wrap = ns_##name::cast(handle);                                \
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->name##_cb_ptr_);         \
     cb_(wrap);                                                                \
+    wrap->name##_cb_ptr_ = nullptr;                                           \
   };                                                                          \
   name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
   return uv_##name##_start(uv_handle(), NSUV_GET_CB(cb, lcb));                \
@@ -609,10 +632,12 @@ int ns_##name::start(void(*cb)(ns_##name*)) {                                 \
 template <typename D_T>                                                       \
 int ns_##name::start(void(*cb)(ns_##name*, D_T*), D_T* data) {                \
   if (is_active()) return 0;                                                  \
+  assert(nullptr == name##_cb_ptr_);                                          \
   auto lcb = [](uv_##name##_t* handle) {                                      \
     ns_##name* wrap = ns_##name::cast(handle);                                \
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->name##_cb_ptr_);         \
     cb_(wrap, static_cast<D_T*>(wrap->name##_cb_data_));                      \
+    wrap->name##_cb_ptr_ = nullptr;                                           \
   };                                                                          \
   name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
   name##_cb_data_ = data;                                                     \
@@ -753,10 +778,12 @@ ns_mutex::scoped_lock::~scoped_lock() {
 /* ns_thread */
 
 int ns_thread::create(void(*cb)(ns_thread*)) {
+  assert(nullptr == thread_cb_ptr_);
   auto lcb = [](void* arg) {
     auto* wrap = static_cast<decltype(this)>(arg);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->thread_cb_ptr_);
     cb_(wrap);
+    wrap->thread_cb_ptr_ = nullptr;
   };
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
@@ -765,10 +792,12 @@ int ns_thread::create(void(*cb)(ns_thread*)) {
 
 template <typename D_T>
 int ns_thread::create(void(*cb)(ns_thread*, D_T*), D_T* data) {
+  assert(nullptr == thread_cb_ptr_);
   auto lcb = [](void* arg) {
     auto* wrap = static_cast<decltype(this)>(arg);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->thread_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
+    wrap->thread_cb_ptr_ = nullptr;
   };
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
@@ -778,10 +807,12 @@ int ns_thread::create(void(*cb)(ns_thread*, D_T*), D_T* data) {
 
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void(*cb)(ns_thread*)) {
+  assert(nullptr == thread_cb_ptr_);
   auto lcb = [](void* arg) {
     auto* wrap = static_cast<decltype(this)>(arg);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->thread_cb_ptr_);
     cb_(wrap);
+    wrap->thread_cb_ptr_ = nullptr;
   };
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
@@ -792,10 +823,12 @@ template <typename D_T>
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void(*cb)(ns_thread*, D_T*),
                          D_T* data) {
+  assert(nullptr == thread_cb_ptr_);
   auto lcb = [](void* arg) {
     auto* wrap = static_cast<decltype(this)>(arg);
     auto* cb_ = reinterpret_cast<decltype(cb)>(wrap->thread_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
+    wrap->thread_cb_ptr_ = nullptr;
   };
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
