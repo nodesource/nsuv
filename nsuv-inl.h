@@ -164,8 +164,9 @@ void ns_udp_send::init(ns_udp* handle,
                        CB cb,
                        D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
-  bufs_.reserve(nbufs);
-  std::memcpy(bufs_.data(), bufs, sizeof(uv_buf_t) * nbufs);
+  for (size_t i = 0; i < nbufs; i++) {
+    bufs_.push_back(bufs[i]);
+  }
   std::memcpy(&addr_, addr, sizeof(addr_));
 }
 
