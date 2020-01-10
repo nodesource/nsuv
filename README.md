@@ -1,4 +1,4 @@
-# ns_uv
+# nsuv
 C++ wrapper around libuv focused on making callback arg passing safer.
 
 Example usage:
