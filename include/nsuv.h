@@ -264,10 +264,10 @@ class ns_stream : public ns_handle<UV_T, H_T> {
 
 class ns_async : public ns_handle<uv_async_t, ns_async> {
  public:
-  inline int init(uv_loop_t* loop, void(*cb)(ns_async*));
+  inline NSUV_WUR int init(uv_loop_t* loop, void(*cb)(ns_async*));
   template <typename D_T>
-  inline int init(uv_loop_t* loop, void(*cb)(ns_async*, D_T*), D_T* data);
-  inline int send();
+  inline NSUV_WUR int init(uv_loop_t* loop, void(*cb)(ns_async*, D_T*), D_T* data);
+  inline NSUV_WUR int send();
 
  private:
   void(*async_cb_ptr_)() = nullptr;

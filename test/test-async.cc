@@ -1,4 +1,4 @@
-#include "../nsuv-inl.h"
+#include "../include/nsuv-inl.h"
 #include "./catch.hpp"
 #include "./helpers.h"
 
