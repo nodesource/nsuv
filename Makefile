@@ -3,14 +3,14 @@ CPPLINT ?= $(TOPLEVEL)/tools/cpplint.py
 PYTHON ?= python
 
 LINT_SOURCES = \
-	nsuv.h \
-	nsuv-inl.h
+	include/nsuv.h \
+	include/nsuv-inl.h
 
 clean:
 	@rm -f $(TOPLEVEL)/out/run_tests
 
 lint:
-	@cd $(TOPLEVEL) && $(PYTHON) $(CPPLINT) --filter=-legal/copyright \
+	@cd $(TOPLEVEL) && $(PYTHON) $(CPPLINT) --filter=-legal/copyright,-build/header_guard \
 		$(LINT_SOURCES)
 
 lint-test:
