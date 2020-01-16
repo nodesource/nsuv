@@ -24,6 +24,11 @@
 #define NSUV_INLINE inline
 #endif
 
+#define NSUV_PROXY_FNS(name, ...)                                             \
+  template <typename CB_T>                                                    \
+  static NSUV_INLINE void name(__VA_ARGS__);                                  \
+  template <typename CB_T, typename D_T>                                      \
+  static NSUV_INLINE void name(__VA_ARGS__);
 
 namespace nsuv {
 
@@ -220,11 +225,10 @@ class ns_handle : public UV_T {
   static NSUV_INLINE H_T* cast(UV_T* handle);
 
  private:
+  NSUV_PROXY_FNS(close_proxy_, uv_handle_t* handle)
+
   static NSUV_INLINE void close_delete_cb_(uv_handle_t* handle);
 
-  // TODO(trevnorris): This has a problem, same as all instances, that it
-  // may be called multiple times, and will override the pointers. What does
-  // libuv do when close is called twice on the same handle?
   void(*close_cb_ptr_)() = nullptr;
   void* close_cb_data_ = nullptr;
 };
@@ -263,6 +267,9 @@ class ns_stream : public ns_handle<UV_T, H_T> {
                                  D_T* data);
 
  private:
+  NSUV_PROXY_FNS(listen_proxy_, uv_stream_t* handle, int status)
+  NSUV_PROXY_FNS(write_proxy_, uv_write_t* uv_req, int status)
+
   void(*listen_cb_ptr_)() = nullptr;
   void* listen_cb_data_ = nullptr;
 };
@@ -280,6 +287,8 @@ class ns_async : public ns_handle<uv_async_t, ns_async> {
   NSUV_INLINE NSUV_WUR int send();
 
  private:
+  NSUV_PROXY_FNS(async_proxy_, uv_async_t* handle)
+
   void(*async_cb_ptr_)() = nullptr;
   void* async_cb_data_ = nullptr;
 };
@@ -300,6 +309,8 @@ class ns_poll : public ns_handle<uv_poll_t, ns_poll> {
   NSUV_INLINE NSUV_WUR int stop();
 
  private:
+  NSUV_PROXY_FNS(poll_proxy_, uv_poll_t* handle, int poll, int events)
+
   void(*poll_cb_ptr_)() = nullptr;
   void* poll_cb_data_ = nullptr;
 };
@@ -322,6 +333,9 @@ class ns_tcp : public ns_stream<uv_tcp_t, ns_tcp> {
                                    D_T* data);
   NSUV_INLINE NSUV_WUR int nodelay(bool enable);
   NSUV_INLINE NSUV_WUR int keepalive(bool enable, int delay);
+
+ private:
+  NSUV_PROXY_FNS(connect_proxy_, uv_connect_t* uv_req, int status)
 };
 
 
@@ -342,6 +356,7 @@ class ns_timer : public ns_handle<uv_timer_t, ns_timer> {
   NSUV_INLINE size_t get_repeat();
 
  private:
+  NSUV_PROXY_FNS(timer_proxy_, uv_timer_t* handle)
   void(*timer_cb_ptr_)() = nullptr;
   void* timer_cb_data_ = nullptr;
 };
@@ -358,6 +373,7 @@ class ns_timer : public ns_handle<uv_timer_t, ns_timer> {
     NSUV_INLINE NSUV_WUR int start(void(*cb)(ns_##name*, D_T*), D_T* data);   \
     NSUV_INLINE NSUV_WUR int stop();                                          \
    private:                                                                   \
+    NSUV_PROXY_FNS(name##_proxy_, uv_##name##_t* handle)                      \
     void(*name##_cb_ptr_)() = nullptr;                                        \
     void* name##_cb_data_ = nullptr;                                          \
   };
@@ -396,6 +412,9 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
                                 const struct sockaddr* addr,
                                 void(*cb)(ns_udp_send*, int, D_T*),
                                 D_T* data);
+
+ private:
+  NSUV_PROXY_FNS(send_proxy_, uv_udp_send_t* uv_req, int status)
 };
 
 
@@ -452,6 +471,8 @@ class ns_thread {
   static NSUV_INLINE uv_thread_t self();
 
  private:
+  NSUV_PROXY_FNS(create_proxy_, void* arg)
+
   uv_thread_t thread_;
   uv_thread_t parent_;
   void(*thread_cb_ptr_)() = nullptr;
@@ -460,6 +481,7 @@ class ns_thread {
 
 }  // namespace nsuv
 
+#undef NSUV_PROXY_FNS
 #undef NSUV_INLINE
 #undef NSUV_WUR
 
