@@ -795,8 +795,11 @@ void ns_mutex::unlock() {
   uv_mutex_unlock(&mutex_);
 }
 
-ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex) : mutex_ref_(mutex) {
-  mutex_ref_->lock();
+ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex, bool do_lock)
+    : mutex_ref_(mutex) {
+  if (do_lock) {
+    mutex_ref_->lock();
+  }
 }
 
 ns_mutex::scoped_lock::~scoped_lock() {

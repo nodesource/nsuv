@@ -441,7 +441,7 @@ class ns_mutex {
     scoped_lock(scoped_lock&&) = delete;
     scoped_lock& operator=(const scoped_lock&) = delete;
     scoped_lock& operator=(scoped_lock&&) = delete;
-    NSUV_INLINE explicit scoped_lock(ns_mutex* mutex);
+    NSUV_INLINE explicit scoped_lock(ns_mutex* mutex, bool do_lock = true);
     NSUV_INLINE ~scoped_lock();
    private:
     ns_mutex* mutex_ref_;
