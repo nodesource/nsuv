@@ -2,7 +2,7 @@
 #define NSUV_INL_H_
 
 #include "./nsuv.h"
-#include <uv.h>
+#include "uv.h"
 
 #include <cstring>  // memcpy
 #include <new>  // nothrow

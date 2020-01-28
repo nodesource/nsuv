@@ -1,7 +1,7 @@
 #ifndef NSUV_H_
 #define NSUV_H_
 
-#include <uv.h>
+#include "uv.h"
 #include <vector>
 
 /* NSUV_WUR -> NSUV_WARN_UNUSED_RESULT */

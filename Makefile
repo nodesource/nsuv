@@ -19,6 +19,6 @@ lint-test:
 
 test:
 	$(CXX) -Wall -Wextra -O0 -g -fstandalone-debug -luv -lrt -lpthread \
-		-lnsl -ldl -o out/run_tests test/test*.cc
+		-lnsl -ldl -std=c++1y -o out/run_tests test/test*.cc
 
 .PHONY: clean lint lint-test test
