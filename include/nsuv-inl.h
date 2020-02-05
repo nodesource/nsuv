@@ -851,6 +851,10 @@ int ns_thread::join() {
   return uv_thread_join(&thread_);
 }
 
+uv_thread_t ns_thread::base() {
+  return thread_;
+}
+
 uv_thread_t ns_thread::owner() {
   return parent_;
 }
