@@ -863,6 +863,10 @@ int ns_thread::equal(uv_thread_t* t2) {
   return uv_thread_equal(&thread_, t2);
 }
 
+int ns_thread::equal(uv_thread_t&& t2) {
+  return uv_thread_equal(&thread_, &t2);
+}
+
 uv_thread_t ns_thread::self() {
   return uv_thread_self();
 }

@@ -130,7 +130,8 @@ TEST_CASE("threadpool_multiple_event_loops", "[thread]") {
 }
 
 
-static void thread_entry(ns_thread*, size_t* arg) {
+static void thread_entry(ns_thread* thread, size_t* arg) {
+  CHECK(0 != thread->equal(uv_thread_self()));
   CHECK(*arg == 42);
   thread_called++;
 }
@@ -141,7 +142,8 @@ TEST_CASE("thread_create", "[thread]") {
   size_t arg[] = { 42 };
   REQUIRE(0 == thread.create(thread_entry, arg));
   REQUIRE(0 == thread.join());
-  REQUIRE(thread_called == 1);
+  REQUIRE(1 == thread_called);
+  REQUIRE(0 == thread.equal(uv_thread_self()));
 }
 
 

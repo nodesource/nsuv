@@ -469,6 +469,7 @@ class ns_thread {
   NSUV_INLINE uv_thread_t base();
   NSUV_INLINE uv_thread_t owner();
   NSUV_INLINE NSUV_WUR int equal(uv_thread_t* t2);
+  NSUV_INLINE NSUV_WUR int equal(uv_thread_t&& t2);
   static NSUV_INLINE uv_thread_t self();
 
  private:
