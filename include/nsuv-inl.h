@@ -11,10 +11,6 @@
 
 namespace nsuv {
 
-// TODO(trevnorris): Don't like using a macro here.
-#define NSUV_GET_CB(cb1, cb2)                                                \
-  ((cb1) == nullptr ? nullptr : (cb2))
-
 
 /* ns_req */
 
@@ -262,7 +258,10 @@ void ns_handle<UV_T, H_T>::close() {
 template <class UV_T, class H_T>
 void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*)) {
   close_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  uv_close(base_handle(), NSUV_GET_CB(cb, (&close_proxy_<decltype(cb)>)));
+  if (cb == nullptr)
+    uv_close(base_handle(), nullptr);
+  else
+    uv_close(base_handle(), &close_proxy_<decltype(cb)>);
 }
 
 template <class UV_T, class H_T>
@@ -270,7 +269,10 @@ template <typename D_T>
 void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*, D_T*), D_T* data) {
   close_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   close_cb_data_ = data;
-  uv_close(base_handle(), NSUV_GET_CB(cb, (&close_proxy_<decltype(cb), D_T>)));
+  if (cb == nullptr)
+    uv_close(base_handle(), nullptr);
+  else
+    uv_close(base_handle(), &close_proxy_<decltype(cb), D_T>);
 }
 
 template <class UV_T, class H_T>
@@ -341,9 +343,9 @@ uv_stream_t* ns_stream<UV_T, H_T>::base_stream() {
 template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::listen(int backlog, void(*cb)(H_T*, int)) {
   listen_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  return uv_listen(base_stream(),
-                   backlog,
-                   NSUV_GET_CB(cb, (&listen_proxy_<decltype(cb)>)));
+  if (cb == nullptr)
+    return uv_listen(base_stream(), backlog, nullptr);
+  return uv_listen(base_stream(), backlog, &listen_proxy_<decltype(cb)>);
 }
 
 template <class UV_T, class H_T>
@@ -353,9 +355,9 @@ int ns_stream<UV_T, H_T>::listen(int backlog,
                                  D_T* data) {
   listen_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   listen_cb_data_ = data;
-  return uv_listen(base_stream(),
-                   backlog,
-                   NSUV_GET_CB(cb, (&listen_proxy_<decltype(cb), D_T>)));
+  if (cb == nullptr)
+    return uv_listen(base_stream(), backlog, nullptr);
+  return uv_listen(base_stream(), backlog, &listen_proxy_<decltype(cb), D_T>);
 }
 
 template <class UV_T, class H_T>
@@ -364,11 +366,17 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 size_t nbufs,
                                 void(*cb)(ns_write<H_T>*, int)) {
   req->init(H_T::cast(this), bufs, nbufs, cb);
+  if (cb == nullptr)
+    return uv_write(req->uv_req(),
+                    base_stream(),
+                    req->bufs().data(),
+                    req->bufs().size(),
+                    nullptr);
   return uv_write(req->uv_req(),
                   base_stream(),
                   req->bufs().data(),
                   req->bufs().size(),
-                  NSUV_GET_CB(cb, (&write_proxy_<decltype(cb)>)));
+                  &write_proxy_<decltype(cb)>);
 }
 
 template <class UV_T, class H_T>
@@ -376,11 +384,17 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void(*cb)(ns_write<H_T>*, int)) {
   req->init(H_T::cast(this), bufs, cb);
+  if (cb == nullptr)
+    return uv_write(req->uv_req(),
+                    base_stream(),
+                    req->bufs().data(),
+                    req->bufs().size(),
+                    nullptr);
   return uv_write(req->uv_req(),
                   base_stream(),
                   req->bufs().data(),
                   req->bufs().size(),
-                  NSUV_GET_CB(cb, (&write_proxy_<decltype(cb)>)));
+                  &write_proxy_<decltype(cb)>);
 }
 
 template <class UV_T, class H_T>
@@ -391,11 +405,17 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 void(*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
   req->init(H_T::cast(this), bufs, nbufs, cb, data);
+  if (cb == nullptr)
+    return uv_write(req->uv_req(),
+                    base_stream(),
+                    req->bufs().data(),
+                    req->bufs().size(),
+                    nullptr);
   return uv_write(req->uv_req(),
                   base_stream(),
                   req->bufs().data(),
                   req->bufs().size(),
-                  NSUV_GET_CB(cb, (&write_proxy_<decltype(cb), D_T>)));
+                  &write_proxy_<decltype(cb), D_T>);
 }
 
 template <class UV_T, class H_T>
@@ -409,7 +429,12 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   base_stream(),
                   req->bufs().data(),
                   req->bufs().size(),
-                  NSUV_GET_CB(cb, (&write_proxy_<decltype(cb), D_T>)));
+                  nullptr);
+  return uv_write(req->uv_req(),
+                  base_stream(),
+                  req->bufs().data(),
+                  req->bufs().size(),
+                  &write_proxy_<decltype(cb), D_T>);
 }
 
 template <class UV_T, class H_T>
@@ -450,18 +475,18 @@ void ns_stream<UV_T, H_T>::write_proxy_(uv_write_t* uv_req, int status) {
 int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*)) {
   async_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   async_cb_data_ = nullptr;
-  return uv_async_init(loop,
-                       uv_handle(),
-                       NSUV_GET_CB(cb, (&async_proxy_<decltype(cb)>)));
+  if (cb == nullptr)
+    return uv_async_init(loop, uv_handle(), nullptr);
+  return uv_async_init(loop, uv_handle(), &async_proxy_<decltype(cb)>);
 }
 
 template <typename D_T>
 int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*, D_T*), D_T* data) {
   async_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   async_cb_data_ = data;
-  return uv_async_init(loop,
-                       uv_handle(),
-                       NSUV_GET_CB(cb, (&async_proxy_<decltype(cb), D_T>)));
+  if (cb == nullptr)
+    return uv_async_init(loop, uv_handle(), nullptr);
+  return uv_async_init(loop, uv_handle(), &async_proxy_<decltype(cb), D_T>);
 }
 
 int ns_async::send() {
@@ -499,18 +524,18 @@ int ns_poll::init_socket(uv_loop_t* loop, uv_os_sock_t socket) {
 
 int ns_poll::start(int events, void(*cb)(ns_poll*, int, int)) {
   poll_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  return uv_poll_start(uv_handle(),
-                       events,
-                       NSUV_GET_CB(cb, (&poll_proxy_<decltype(cb)>)));
+  if (cb == nullptr)
+    return uv_poll_start(uv_handle(), events, nullptr);
+  return uv_poll_start(uv_handle(), events, &poll_proxy_<decltype(cb)>);
 }
 
 template <typename D_T>
 int ns_poll::start(int events, void(*cb)(ns_poll*, int, int, D_T*), D_T* data) {
   poll_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   poll_cb_data_ = data;
-  return uv_poll_start(uv_handle(),
-                       events,
-                       NSUV_GET_CB(cb, (&poll_proxy_<decltype(cb), D_T>)));
+  if (cb == nullptr)
+    return uv_poll_start(uv_handle(), events, nullptr);
+  return uv_poll_start(uv_handle(), events, &poll_proxy_<decltype(cb), D_T>);
 }
 
 int ns_poll::stop() {
@@ -546,10 +571,10 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void(*cb)(ns_connect<ns_tcp>*, int)) {
   req->init(this, addr, cb);
-  return uv_tcp_connect(req->uv_req(),
-                        uv_handle(),
-                        addr,
-                        NSUV_GET_CB(cb, (&connect_proxy_<decltype(cb)>)));
+  if (cb == nullptr)
+    return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
+  return uv_tcp_connect(
+      req->uv_req(), uv_handle(), addr, &connect_proxy_<decltype(cb)>);
 }
 
 template <typename D_T>
@@ -558,10 +583,10 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     void(*cb)(ns_connect<ns_tcp>*, int, D_T*),
                     D_T* data) {
   req->init(this, addr, cb, data);
-  return uv_tcp_connect(req->uv_req(),
-                        uv_handle(),
-                        addr,
-                        NSUV_GET_CB(cb, (&connect_proxy_<decltype(cb), D_T>)));
+  if (cb == nullptr)
+    return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
+  return uv_tcp_connect(
+      req->uv_req(), uv_handle(), addr, &connect_proxy_<decltype(cb), D_T>);
 }
 
 int ns_tcp::nodelay(bool enable) {
@@ -597,10 +622,10 @@ int ns_timer::init(uv_loop_t* loop) {
 
 int ns_timer::start(void(*cb)(ns_timer*), uint64_t timeout, uint64_t repeat) {
   timer_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  return uv_timer_start(uv_handle(),
-                        NSUV_GET_CB(cb, (&timer_proxy_<decltype(cb)>)),
-                        timeout,
-                        repeat);
+  if (cb == nullptr)
+    return uv_timer_start(uv_handle(), nullptr, timeout, repeat);
+  return uv_timer_start(
+      uv_handle(), &timer_proxy_<decltype(cb)>, timeout, repeat);
 }
 
 template <typename D_T>
@@ -610,10 +635,10 @@ int ns_timer::start(void(*cb)(ns_timer*, D_T*),
                     D_T* data) {
   timer_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   timer_cb_data_ = data;
-  return uv_timer_start(uv_handle(),
-                        NSUV_GET_CB(cb, (&timer_proxy_<decltype(cb), D_T>)),
-                        timeout,
-                        repeat);
+  if (cb == nullptr)
+    return uv_timer_start(uv_handle(), nullptr, timeout, repeat);
+  return uv_timer_start(
+      uv_handle(), &timer_proxy_<decltype(cb), D_T>, timeout, repeat);
 }
 
 int ns_timer::stop() {
@@ -651,8 +676,10 @@ int ns_##name::init(uv_loop_t* loop) {                                        \
 int ns_##name::start(void(*cb)(ns_##name*)) {                                 \
   if (is_active()) return 0;                                                  \
   name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
+  if (cb == nullptr)                                                          \
+    return uv_##name##_start(uv_handle(), nullptr);                           \
   return uv_##name##_start(uv_handle(),                                       \
-                           NSUV_GET_CB(cb, (&name##_proxy_<decltype(cb)>)));  \
+                           &name##_proxy_<decltype(cb)>);                     \
 }                                                                             \
                                                                               \
 template <typename D_T>                                                       \
@@ -660,8 +687,10 @@ int ns_##name::start(void(*cb)(ns_##name*, D_T*), D_T* data) {                \
   if (is_active()) return 0;                                                  \
   name##_cb_ptr_ = reinterpret_cast<void(*)()>(cb);                           \
   name##_cb_data_ = data;                                                     \
+  if (cb == nullptr)                                                          \
+    return uv_##name##_start(uv_handle(), nullptr);                           \
   return uv_##name##_start(                                                   \
-      uv_handle(), NSUV_GET_CB(cb, (&name##_proxy_<decltype(cb), D_T>)));     \
+      uv_handle(), &name##_proxy_<decltype(cb), D_T>);                        \
 }                                                                             \
                                                                               \
 int ns_##name::stop() {                                                       \
@@ -702,12 +731,19 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int)) {
   req->init(this, bufs, nbufs, addr, cb);
+  if (cb == nullptr)
+    return uv_udp_send(req->uv_req(),
+                       uv_handle(),
+                       req->bufs().data(),
+                       req->bufs().size(),
+                       addr,
+                       nullptr);
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
                      req->bufs().data(),
                      req->bufs().size(),
                      addr,
-                     NSUV_GET_CB(cb, (&send_proxy_<decltype(cb)>)));
+                     &send_proxy_<decltype(cb)>);
 }
 
 int ns_udp::send(ns_udp_send* req,
@@ -715,12 +751,19 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int)) {
   req->init(this, bufs, addr, cb);
+  if (cb == nullptr)
+    return uv_udp_send(req->uv_req(),
+                       uv_handle(),
+                       req->bufs().data(),
+                       req->bufs().size(),
+                       addr,
+                       nullptr);
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
                      req->bufs().data(),
                      req->bufs().size(),
                      addr,
-                     NSUV_GET_CB(cb, (&send_proxy_<decltype(cb)>)));
+                     &send_proxy_<decltype(cb)>);
 }
 
 template <typename D_T>
@@ -731,12 +774,19 @@ int ns_udp::send(ns_udp_send* req,
                  void(*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
   req->init(this, bufs, nbufs, addr, cb, data);
+  if (cb == nullptr)
+    return uv_udp_send(req->uv_req(),
+                       uv_handle(),
+                       req->bufs().data(),
+                       req->bufs().size(),
+                       addr,
+                       nullptr);
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
                      req->bufs().data(),
                      req->bufs().size(),
                      addr,
-                     NSUV_GET_CB(cb, (&send_proxy_<decltype(cb), D_T>)));
+                     &send_proxy_<decltype(cb), D_T>);
 }
 
 template <typename D_T>
@@ -746,12 +796,19 @@ int ns_udp::send(ns_udp_send* req,
                  void(*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
   req->init(this, bufs, addr, cb, data);
+  if (cb == nullptr)
+    return uv_udp_send(req->uv_req(),
+                       uv_handle(),
+                       req->bufs().data(),
+                       req->bufs().size(),
+                       addr,
+                       nullptr);
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
                      req->bufs().data(),
                      req->bufs().size(),
                      addr,
-                     NSUV_GET_CB(cb, (&send_proxy_<decltype(cb), D_T>)));
+                     &send_proxy_<decltype(cb), D_T>);
 }
 
 template <typename CB_T>
@@ -812,8 +869,9 @@ ns_mutex::scoped_lock::~scoped_lock() {
 int ns_thread::create(void(*cb)(ns_thread*)) {
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
-  return uv_thread_create(
-      &thread_, NSUV_GET_CB(cb, (&create_proxy_<decltype(cb)>)), this);
+  if (cb == nullptr)
+    return uv_thread_create(&thread_, nullptr, this);
+  return uv_thread_create(&thread_, &create_proxy_<decltype(cb)>, this);
 }
 
 template <typename D_T>
@@ -821,16 +879,19 @@ int ns_thread::create(void(*cb)(ns_thread*, D_T*), D_T* data) {
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   thread_cb_data_ = data;
-  return uv_thread_create(
-      &thread_, NSUV_GET_CB(cb, (&create_proxy_<decltype(cb), D_T>)), this);
+  if (cb == nullptr)
+    return uv_thread_create(&thread_, nullptr, this);
+  return uv_thread_create(&thread_, &create_proxy_<decltype(cb), D_T>, this);
 }
 
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void(*cb)(ns_thread*)) {
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
+  if (cb == nullptr)
+    return uv_thread_create_ex(&thread_, params, nullptr, this);
   return uv_thread_create_ex(
-      &thread_, params, NSUV_GET_CB(cb, (&create_proxy_<decltype(cb)>)), this);
+      &thread_, params, &create_proxy_<decltype(cb)>, this);
 }
 
 template <typename D_T>
@@ -840,11 +901,10 @@ int ns_thread::create_ex(const uv_thread_options_t* params,
   parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
   thread_cb_data_ = data;
+  if (cb == nullptr)
+    return uv_thread_create_ex(&thread_, params, nullptr, this);
   return uv_thread_create_ex(
-      &thread_,
-      params,
-      NSUV_GET_CB(cb, (&create_proxy_<decltype(cb), D_T>)),
-      this);
+      &thread_, params, &create_proxy_<decltype(cb), D_T>, this);
 }
 
 int ns_thread::join() {
@@ -884,8 +944,6 @@ void ns_thread::create_proxy_(void* arg) {
     auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
 }
-
-#undef NSUV_GET_CB
 
 }  // namespace nsuv
 
