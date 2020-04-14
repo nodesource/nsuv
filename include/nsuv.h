@@ -5,23 +5,25 @@
 #include <vector>
 
 /* NSUV_WUR -> NSUV_WARN_UNUSED_RESULT */
-#if defined(__clang__) && __has_attribute(warn_unused_result)
-# define NSUV_WUR __attribute__((warn_unused_result))
+#if defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define NSUV_WUR _Check_return_
+#elif defined(__clang__) && __has_attribute(warn_unused_result)
+#define NSUV_WUR __attribute__((warn_unused_result))
 #elif defined(__GNUC__) && !__INTEL_COMPILER &&                               \
   (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 0))
 #define NSUV_WUR __attribute__((warn_unused_result))
-#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define NSUV_WUR _Check_return_
 #else
 #define NSUV_WUR /* NOT SUPPORTED */
 #endif
 
-#if !defined(DEBUG) && defined(__clang__) && __has_attribute(always_inline)
-#define NSUV_INLINE inline __attribute__((always_inline))
-#elif !defined(DEBUG) && defined(_MSC_VER)
+#if !defined(DEBUG)
+#if defined(_MSC_VER)
 #define NSUV_INLINE __forceinline
+#elif defined(__clang__) && __has_attribute(always_inline)
+#define NSUV_INLINE inline __attribute__((always_inline))
 #else
 #define NSUV_INLINE inline
+#endif
 #endif
 
 #define NSUV_PROXY_FNS(name, ...)                                             \
