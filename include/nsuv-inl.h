@@ -11,6 +11,7 @@
 
 namespace nsuv {
 
+#define NSUV_CAST_NULLPTR static_cast<void*>(nullptr)
 
 /* ns_req */
 
@@ -276,6 +277,11 @@ void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*, D_T*), D_T* data) {
 }
 
 template <class UV_T, class H_T>
+void ns_handle<UV_T, H_T>::close(void(*cb)(H_T*, void*), std::nullptr_t) {
+  return close(cb, NSUV_CAST_NULLPTR);
+}
+
+template <class UV_T, class H_T>
 void ns_handle<UV_T, H_T>::close_and_delete() {
   uv_close(base_handle(), close_delete_cb_);
 }
@@ -361,6 +367,13 @@ int ns_stream<UV_T, H_T>::listen(int backlog,
 }
 
 template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::listen(int backlog,
+                                 void(*cb)(H_T*, int, void*),
+                                 std::nullptr_t) {
+  return listen(backlog, cb, NSUV_CAST_NULLPTR);
+}
+
+template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
@@ -419,6 +432,15 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 }
 
 template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
+                                const uv_buf_t bufs[],
+                                size_t nbufs,
+                                void(*cb)(ns_write<H_T>*, int, void*),
+                                std::nullptr_t) {
+  return write(req, bufs, nbufs, cb, NSUV_CAST_NULLPTR);
+}
+
+template <class UV_T, class H_T>
 template <typename D_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
@@ -435,6 +457,14 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   req->bufs().data(),
                   req->bufs().size(),
                   &write_proxy_<decltype(cb), D_T>);
+}
+
+template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
+                                const std::vector<uv_buf_t>& bufs,
+                                void(*cb)(ns_write<H_T>*, int, void*),
+                                std::nullptr_t) {
+  return write(req, bufs, cb, NSUV_CAST_NULLPTR);
 }
 
 template <class UV_T, class H_T>
@@ -489,6 +519,12 @@ int ns_async::init(uv_loop_t* loop, void(*cb)(ns_async*, D_T*), D_T* data) {
   return uv_async_init(loop, uv_handle(), &async_proxy_<decltype(cb), D_T>);
 }
 
+int ns_async::init(uv_loop_t* loop,
+                   void(*cb)(ns_async*, void*),
+                   std::nullptr_t) {
+  return init(loop, cb, NSUV_CAST_NULLPTR);
+}
+
 int ns_async::send() {
   return uv_async_send(uv_handle());
 }
@@ -536,6 +572,12 @@ int ns_poll::start(int events, void(*cb)(ns_poll*, int, int, D_T*), D_T* data) {
   if (cb == nullptr)
     return uv_poll_start(uv_handle(), events, nullptr);
   return uv_poll_start(uv_handle(), events, &poll_proxy_<decltype(cb), D_T>);
+}
+
+int ns_poll::start(int events,
+                   void(*cb)(ns_poll*, int, int, void*),
+                   std::nullptr_t) {
+  return start(events, cb, NSUV_CAST_NULLPTR);
 }
 
 int ns_poll::stop() {
@@ -587,6 +629,13 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
     return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
   return uv_tcp_connect(
       req->uv_req(), uv_handle(), addr, &connect_proxy_<decltype(cb), D_T>);
+}
+
+int ns_tcp::connect(ns_connect<ns_tcp>* req,
+                    const struct sockaddr* addr,
+                    void(*cb)(ns_connect<ns_tcp>*, int, void*),
+                    std::nullptr_t) {
+  return connect(req, addr, cb, NSUV_CAST_NULLPTR);
 }
 
 int ns_tcp::nodelay(bool enable) {
@@ -641,6 +690,13 @@ int ns_timer::start(void(*cb)(ns_timer*, D_T*),
       uv_handle(), &timer_proxy_<decltype(cb), D_T>, timeout, repeat);
 }
 
+int ns_timer::start(void(*cb)(ns_timer*, void*),
+                    uint64_t timeout,
+                    uint64_t repeat,
+                    std::nullptr_t) {
+  return start(cb, timeout, repeat, NSUV_CAST_NULLPTR);
+}
+
 int ns_timer::stop() {
   return uv_timer_stop(uv_handle());
 }
@@ -691,6 +747,10 @@ int ns_##name::start(void(*cb)(ns_##name*, D_T*), D_T* data) {                \
     return uv_##name##_start(uv_handle(), nullptr);                           \
   return uv_##name##_start(                                                   \
       uv_handle(), &name##_proxy_<decltype(cb), D_T>);                        \
+}                                                                             \
+                                                                              \
+int ns_##name::start(void(*cb)(ns_##name*, void*), std::nullptr_t) {          \
+  return start(cb, NSUV_CAST_NULLPTR);                                        \
 }                                                                             \
                                                                               \
 int ns_##name::stop() {                                                       \
@@ -789,6 +849,15 @@ int ns_udp::send(ns_udp_send* req,
                      &send_proxy_<decltype(cb), D_T>);
 }
 
+int ns_udp::send(ns_udp_send* req,
+                 const uv_buf_t bufs[],
+                 size_t nbufs,
+                 const struct sockaddr* addr,
+                 void(*cb)(ns_udp_send*, int, void*),
+                 std::nullptr_t) {
+  return send(req, bufs, nbufs, addr, cb, NSUV_CAST_NULLPTR);
+}
+
 template <typename D_T>
 int ns_udp::send(ns_udp_send* req,
                  const std::vector<uv_buf_t>& bufs,
@@ -809,6 +878,14 @@ int ns_udp::send(ns_udp_send* req,
                      req->bufs().size(),
                      addr,
                      &send_proxy_<decltype(cb), D_T>);
+}
+
+int ns_udp::send(ns_udp_send* req,
+                 const std::vector<uv_buf_t>& bufs,
+                 const struct sockaddr* addr,
+                 void(*cb)(ns_udp_send*, int, void*),
+                 std::nullptr_t) {
+  return send(req, bufs, addr, cb, NSUV_CAST_NULLPTR);
 }
 
 template <typename CB_T>
@@ -884,6 +961,10 @@ int ns_thread::create(void(*cb)(ns_thread*, D_T*), D_T* data) {
   return uv_thread_create(&thread_, &create_proxy_<decltype(cb), D_T>, this);
 }
 
+int ns_thread::create(void(*cb)(ns_thread*, void*), std::nullptr_t) {
+  return create(cb, NSUV_CAST_NULLPTR);
+}
+
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void(*cb)(ns_thread*)) {
   parent_ = uv_thread_self();
@@ -905,6 +986,12 @@ int ns_thread::create_ex(const uv_thread_options_t* params,
     return uv_thread_create_ex(&thread_, params, nullptr, this);
   return uv_thread_create_ex(
       &thread_, params, &create_proxy_<decltype(cb), D_T>, this);
+}
+
+int ns_thread::create_ex(const uv_thread_options_t* params,
+                         void(*cb)(ns_thread*, void*),
+                         std::nullptr_t) {
+  return create_ex(params, cb, NSUV_CAST_NULLPTR);
 }
 
 int ns_thread::join() {
@@ -944,6 +1031,8 @@ void ns_thread::create_proxy_(void* arg) {
     auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
 }
+
+#undef NSUV_CAST_NULLPTR
 
 }  // namespace nsuv
 
