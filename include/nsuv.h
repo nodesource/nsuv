@@ -24,6 +24,8 @@
 #else
 #define NSUV_INLINE inline
 #endif
+#else
+#define NSUV_INLINE inline
 #endif
 
 #define NSUV_PROXY_FNS(name, ...)                                             \
