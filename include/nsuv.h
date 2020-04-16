@@ -16,14 +16,12 @@
 #define NSUV_WUR /* NOT SUPPORTED */
 #endif
 
-#if !defined(DEBUG)
-#if defined(_MSC_VER)
+#if !defined(DEBUG) && defined(_MSC_VER)
 #define NSUV_INLINE __forceinline
-#elif defined(__clang__) && __has_attribute(always_inline)
+#elif !defined(DEBUG) && defined(__clang__) && __has_attribute(always_inline)
 #define NSUV_INLINE inline __attribute__((always_inline))
 #else
 #define NSUV_INLINE inline
-#endif
 #endif
 
 #define NSUV_PROXY_FNS(name, ...)                                             \
