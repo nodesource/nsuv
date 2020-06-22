@@ -57,21 +57,19 @@ class ns_udp;
 class ns_mutex;
 class ns_thread;
 
-
 /**
  * UV_T - uv_<type>_t this class inherits.
  * R_T  - ns_<req_type> that inherits this class.
- * H_T  - ns_<handle_type> that utilizes this class.
  * D_T  - data type passed to the callback, etc.
  */
-template <class UV_T, class R_T, class H_T>
-class ns_req : public UV_T {
- public:
+template <class UV_T, class R_T>
+class ns_base_req : public UV_T {
+ protected:
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle, CB cb, D_T* data = nullptr);
+  NSUV_INLINE void init(CB cb, D_T* data = nullptr);
 
+ public:
   /* Return the ns_handle that has ownership of this req. */
-  NSUV_INLINE H_T* handle();
   NSUV_INLINE UV_T* uv_req();
   NSUV_INLINE uv_req_t* base_req();
   NSUV_INLINE uv_req_type get_type();
@@ -87,6 +85,26 @@ class ns_req : public UV_T {
   static NSUV_INLINE R_T* cast(uv_req_t* req);
   static NSUV_INLINE R_T* cast(UV_T* req);
 
+ protected:
+  void(*req_cb_)() = nullptr;
+  void* req_cb_data_ = nullptr;
+};
+
+
+/**
+ * UV_T - uv_<type>_t this class inherits.
+ * R_T  - ns_<req_type> that inherits this class.
+ * H_T  - ns_<handle_type> that utilizes this class.
+ * D_T  - data type passed to the callback, etc.
+ */
+template <class UV_T, class R_T, class H_T>
+class ns_req : public ns_base_req<UV_T, R_T> {
+ public:
+  template <typename CB, typename D_T = void>
+  NSUV_INLINE void init(H_T* handle, CB cb, D_T* data = nullptr);
+  /* Return the ns_handle that has ownership of this req. */
+  NSUV_INLINE H_T* handle();
+
  private:
   template <class, class>
   friend class ns_stream;
@@ -94,8 +112,6 @@ class ns_req : public UV_T {
   friend class ns_udp;
 
   H_T* handle_ = nullptr;
-  void(*req_cb_)() = nullptr;
-  void* req_cb_data_ = nullptr;
 };
 
 
@@ -183,6 +199,37 @@ class ns_udp_send : public ns_req<uv_udp_send_t, ns_udp_send, ns_udp> {
 
   std::vector<uv_buf_t> bufs_;
   struct sockaddr addr_;
+};
+
+
+/* ns_addrinfo */
+
+class ns_addrinfo : public ns_base_req<uv_getaddrinfo_t, ns_addrinfo> {
+ public:
+  NSUV_INLINE ns_addrinfo();
+
+  NSUV_INLINE ~ns_addrinfo();
+
+  NSUV_INLINE NSUV_WUR int get(uv_loop_t* loop,
+                               void(*cb)(ns_addrinfo*, int),
+                               const char* node,
+                               const char* service,
+                               const struct addrinfo* hints);
+  template <typename D_T = void>
+  NSUV_INLINE NSUV_WUR int get(uv_loop_t* loop,
+                               void(*cb)(ns_addrinfo*, int, D_T*),
+                               const char* node,
+                               const char* service,
+                               const struct addrinfo* hints,
+                               D_T* data = nullptr);
+  NSUV_INLINE const struct addrinfo* info();
+  NSUV_INLINE void free();
+
+ private:
+  NSUV_PROXY_FNS(addrinfo_proxy_, uv_getaddrinfo_t*, int, struct addrinfo*)
+
+  void(*addrinfo_cb_ptr_)() = nullptr;
+  void* addrinfo_cb_data_ = nullptr;
 };
 
 

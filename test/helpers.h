@@ -14,6 +14,8 @@
 # include <sys/resource.h>  /* setrlimit() */
 #endif
 
+#include <uv.h>
+
 constexpr int kTestPort = 9123;
 
 // TODO(trevnorris): This is temporary while libuv tests are being ported. A

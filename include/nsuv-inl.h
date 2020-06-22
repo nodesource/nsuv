@@ -13,33 +13,27 @@ namespace nsuv {
 
 #define NSUV_CAST_NULLPTR static_cast<void*>(nullptr)
 
-/* ns_req */
+/* ns_base_req */
 
-template <class UV_T, class R_T, class H_T>
+template <class UV_T, class R_T>
 template <typename CB, typename D_T>
-void ns_req<UV_T, R_T, H_T>::init(H_T* handle, CB cb, D_T* data) {
-  handle_ = handle;
+void ns_base_req<UV_T, R_T>::init(CB cb, D_T* data) {
   req_cb_ = reinterpret_cast<void(*)()>(cb);
   req_cb_data_ = data;
 }
 
-template <class UV_T, class R_T, class H_T>
-H_T* ns_req<UV_T, R_T, H_T>::handle() {
-  return handle_;
-}
-
-template <class UV_T, class R_T, class H_T>
-UV_T* ns_req<UV_T, R_T, H_T>::uv_req() {
+template <class UV_T, class R_T>
+UV_T* ns_base_req<UV_T, R_T>::uv_req() {
   return static_cast<UV_T*>(this);
 }
 
-template <class UV_T, class R_T, class H_T>
-uv_req_t* ns_req<UV_T, R_T, H_T>::base_req() {
+template <class UV_T, class R_T>
+uv_req_t* ns_base_req<UV_T, R_T>::base_req() {
   return reinterpret_cast<uv_req_t*>(uv_req());
 }
 
-template <class UV_T, class R_T, class H_T>
-uv_req_type ns_req<UV_T, R_T, H_T>::get_type() {
+template <class UV_T, class R_T>
+uv_req_type ns_base_req<UV_T, R_T>::get_type() {
 #if UV_VERSION_HEX >= 70400
   return uv_req_get_type(base_req());
 #else
@@ -47,8 +41,8 @@ uv_req_type ns_req<UV_T, R_T, H_T>::get_type() {
 #endif
 }
 
-template <class UV_T, class R_T, class H_T>
-const char* ns_req<UV_T, R_T, H_T>::type_name() {
+template <class UV_T, class R_T>
+const char* ns_base_req<UV_T, R_T>::type_name() {
 #if UV_VERSION_HEX >= 70400
   return uv_req_type_name(get_type());
 #else
@@ -63,37 +57,51 @@ const char* ns_req<UV_T, R_T, H_T>::type_name() {
 #endif
 }
 
-template <class UV_T, class R_T, class H_T>
-int ns_req<UV_T, R_T, H_T>::cancel() {
+template <class UV_T, class R_T>
+int ns_base_req<UV_T, R_T>::cancel() {
   return uv_cancel(base_req());
 }
 
-template <class UV_T, class R_T, class H_T>
+template <class UV_T, class R_T>
 template <typename D_T>
-D_T* ns_req<UV_T, R_T, H_T>::get_data() {
+D_T* ns_base_req<UV_T, R_T>::get_data() {
   return static_cast<D_T*>(UV_T::data);
 }
 
-template <class UV_T, class R_T, class H_T>
-void ns_req<UV_T, R_T, H_T>::set_data(void* ptr) {
+template <class UV_T, class R_T>
+void ns_base_req<UV_T, R_T>::set_data(void* ptr) {
   UV_T::data = ptr;
 }
 
-template <class UV_T, class R_T, class H_T>
-R_T* ns_req<UV_T, R_T, H_T>::cast(void* req) {
+template <class UV_T, class R_T>
+R_T* ns_base_req<UV_T, R_T>::cast(void* req) {
   return cast(static_cast<uv_req_t*>(req));
 }
 
-template <class UV_T, class R_T, class H_T>
-R_T* ns_req<UV_T, R_T, H_T>::cast(uv_req_t* req) {
+template <class UV_T, class R_T>
+R_T* ns_base_req<UV_T, R_T>::cast(uv_req_t* req) {
   return cast(reinterpret_cast<UV_T*>(req));
 }
 
-template <class UV_T, class R_T, class H_T>
-R_T* ns_req<UV_T, R_T, H_T>::cast(UV_T* req) {
+template <class UV_T, class R_T>
+R_T* ns_base_req<UV_T, R_T>::cast(UV_T* req) {
   return static_cast<R_T*>(req);
 }
 
+/* ns_req */
+
+template <class UV_T, class R_T, class H_T>
+template <typename CB, typename D_T>
+void ns_req<UV_T, R_T, H_T>::init(H_T* handle, CB cb, D_T* data) {
+  handle_ = handle;
+  ns_base_req<UV_T, R_T>::req_cb_ = reinterpret_cast<void(*)()>(cb);
+  ns_base_req<UV_T, R_T>::req_cb_data_ = data;
+}
+
+template <class UV_T, class R_T, class H_T>
+H_T* ns_req<UV_T, R_T, H_T>::handle() {
+  return handle_;
+}
 
 /* ns_connect */
 
@@ -195,6 +203,98 @@ std::vector<uv_buf_t>& ns_udp_send::bufs() {
 
 const sockaddr* ns_udp_send::sockaddr() {
   return const_cast<const struct sockaddr*>(&addr_);
+}
+
+
+/* ns_addrinfo */
+
+ns_addrinfo::ns_addrinfo() {
+  // Make sure to assign nullptr right away so there will be no issues with
+  // the destructor.
+  uv_getaddrinfo_t::addrinfo = nullptr;
+}
+
+ns_addrinfo::~ns_addrinfo() {
+  // Passing nullptr to uv_freeaddrinfo is a noop
+  uv_freeaddrinfo(uv_getaddrinfo_t::addrinfo);
+}
+
+template <typename D_T>
+int ns_addrinfo::get(uv_loop_t* loop,
+                     void(*cb)(ns_addrinfo*, int, D_T*),
+                     const char* node,
+                     const char* service,
+                     const struct addrinfo* hints,
+                     D_T* data) {
+  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb, data);
+  free();
+  addrinfo_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
+  addrinfo_cb_data_ = data;
+  if (cb == nullptr)
+    return uv_getaddrinfo(loop,
+                          uv_req(),
+                          nullptr,
+                          node,
+                          service,
+                          hints);
+  return uv_getaddrinfo(loop,
+                        uv_req(),
+                        &addrinfo_proxy_<decltype(cb), D_T>,
+                        node,
+                        service,
+                        hints);
+}
+
+int ns_addrinfo::get(uv_loop_t* loop,
+                     void(*cb)(ns_addrinfo*, int),
+                     const char* node,
+                     const char* service,
+                     const struct addrinfo* hints) {
+  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb);
+  free();
+  addrinfo_cb_ptr_ = reinterpret_cast<void(*)()>(cb);
+  if (cb == nullptr) {
+    return uv_getaddrinfo(loop,
+                          uv_req(),
+                          nullptr,
+                          node,
+                          service,
+                          hints);
+  }
+
+  return uv_getaddrinfo(loop,
+                        uv_req(),
+                        &addrinfo_proxy_<decltype(cb)>,
+                        node,
+                        service,
+                        hints);
+}
+
+const addrinfo* ns_addrinfo::info() {
+  return uv_getaddrinfo_t::addrinfo;
+}
+
+void ns_addrinfo::free() {
+  uv_freeaddrinfo(uv_getaddrinfo_t::addrinfo);
+  uv_getaddrinfo_t::addrinfo = nullptr;
+}
+
+template <typename CB_T>
+void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
+                                  int status,
+                                  struct addrinfo*) {
+  auto* ai_req = ns_addrinfo::cast(req);
+  auto* cb_ = reinterpret_cast<CB_T>(ai_req->addrinfo_cb_ptr_);
+  cb_(ai_req, status);
+}
+
+template <typename CB_T, typename D_T>
+void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
+                                  int status,
+                                  struct addrinfo*) {
+  auto* ai_req = ns_addrinfo::cast(req);
+  auto* cb_ = reinterpret_cast<CB_T>(ai_req->addrinfo_cb_ptr_);
+  cb_(ai_req, status, static_cast<D_T*>(ai_req->addrinfo_cb_data_));
 }
 
 
