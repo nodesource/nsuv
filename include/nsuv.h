@@ -2,6 +2,7 @@
 #define NSUV_H_
 
 #include "uv.h"
+#include <memory>
 #include <vector>
 
 /* NSUV_WUR -> NSUV_WARN_UNUSED_RESULT */
@@ -130,7 +131,7 @@ class ns_connect : public ns_req<uv_connect_t, ns_connect<H_T>, H_T> {
                         const struct sockaddr* addr,
                         CB cb,
                         D_T* data = nullptr);
-  struct sockaddr addr_;
+  struct sockaddr_storage addr_;
 };
 
 
@@ -178,27 +179,27 @@ class ns_udp_send : public ns_req<uv_udp_send_t, ns_udp_send, ns_udp> {
   friend class ns_udp;
 
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE void init(ns_udp* handle,
+  NSUV_INLINE int init(ns_udp* handle,
                         const uv_buf_t bufs[],
                         size_t nbufs,
                         const struct sockaddr* addr,
                         CB cb,
                         D_T* data = nullptr);
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE void init(ns_udp* handle,
+  NSUV_INLINE int init(ns_udp* handle,
                         const std::vector<uv_buf_t>& bufs,
                         const struct sockaddr* addr,
                         CB cb,
                         D_T* data = nullptr);
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE void init(ns_udp* handle,
+  NSUV_INLINE int init(ns_udp* handle,
                         std::vector<uv_buf_t>&& bufs,
                         const struct sockaddr* addr,
                         CB cb,
                         D_T* data = nullptr);
 
   std::vector<uv_buf_t> bufs_;
-  struct sockaddr addr_;
+  std::unique_ptr<struct sockaddr_storage> addr_;
 };
 
 
@@ -464,6 +465,14 @@ NSUV_LOOP_WATCHER_DEFINE(prepare)
 class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
  public:
   NSUV_INLINE NSUV_WUR int init(uv_loop_t*);
+  NSUV_INLINE NSUV_WUR int bind(const struct sockaddr* addr,
+                                unsigned int flags);
+  NSUV_INLINE NSUV_WUR int connect(const struct sockaddr* addr);
+  NSUV_INLINE NSUV_WUR int try_send(const uv_buf_t bufs[],
+                                    size_t nbufs,
+                                    const struct sockaddr* addr);
+  NSUV_INLINE NSUV_WUR int try_send(const std::vector<uv_buf_t>& bufs,
+                                    const struct sockaddr* addr);
   NSUV_INLINE NSUV_WUR int send(ns_udp_send* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
@@ -498,8 +507,13 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
                                 void(*cb)(ns_udp_send*, int, void*),
                                 std::nullptr_t);
 
+  NSUV_INLINE const struct sockaddr* local_addr();
+  NSUV_INLINE const struct sockaddr* remote_addr();
+
  private:
   NSUV_PROXY_FNS(send_proxy_, uv_udp_send_t* uv_req, int status)
+  std::unique_ptr<struct sockaddr_storage> local_addr_;
+  std::unique_ptr<struct sockaddr_storage> remote_addr_;
 };
 
 
@@ -570,6 +584,11 @@ class ns_thread {
   void* thread_cb_data_ = nullptr;
 };
 
+namespace util {
+
+static NSUV_INLINE int addr_size(const struct sockaddr*);
+
+}  // namespace util
 }  // namespace nsuv
 
 #undef NSUV_PROXY_FNS
