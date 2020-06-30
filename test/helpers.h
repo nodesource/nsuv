@@ -23,6 +23,9 @@ constexpr int kTestPort = 9123;
 #define container_of(ptr, type, member)                                       \
   reinterpret_cast<type*>(reinterpret_cast<char*>(ptr) - offsetof(type, member))
 
+#define SOCKADDR_CAST(addr) \
+  reinterpret_cast<struct sockaddr*>(addr)
+
 static void close_walk_cb(uv_handle_t* handle, void*) {
   if (!uv_is_closing(handle))
     uv_close(handle, nullptr);

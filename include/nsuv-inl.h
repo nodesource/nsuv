@@ -4,6 +4,7 @@
 #include "./nsuv.h"
 #include "uv.h"
 
+#include <cassert>
 #include <cstring>  // memcpy
 #include <new>  // nothrow
 #include <utility>  // move
@@ -12,6 +13,8 @@
 namespace nsuv {
 
 #define NSUV_CAST_NULLPTR static_cast<void*>(nullptr)
+
+using util::addr_size;
 
 /* ns_base_req */
 
@@ -110,12 +113,12 @@ template <typename CB, typename D_T>
 void ns_connect<H_T>::init(
     H_T* handle, const struct sockaddr* addr, CB cb, D_T* data) {
   ns_req<uv_connect_t, ns_connect<H_T>, H_T>::init(handle, cb, data);
-  std::memcpy(&addr_, addr, sizeof(addr_));
+  std::memcpy(&addr_, addr, addr_size(addr));
 }
 
 template <class H_T>
 const sockaddr* ns_connect<H_T>::sockaddr() {
-  return const_cast<const struct sockaddr*>(&addr_);
+  return reinterpret_cast<struct sockaddr*>(&addr_);
 }
 
 
@@ -162,7 +165,7 @@ std::vector<uv_buf_t>& ns_write<H_T>::bufs() {
 /* ns_udp_send */
 
 template <typename CB, typename D_T>
-void ns_udp_send::init(ns_udp* handle,
+int ns_udp_send::init(ns_udp* handle,
                        const uv_buf_t bufs[],
                        size_t nbufs,
                        const struct sockaddr* addr,
@@ -172,29 +175,57 @@ void ns_udp_send::init(ns_udp* handle,
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
-  std::memcpy(&addr_, addr, sizeof(addr_));
+
+  if (addr != nullptr) {
+    addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (addr == nullptr)
+      return UV_ENOMEM;
+
+    int len = addr_size(addr);
+    std::memcpy(addr_.get(), addr, len);
+  }
+
+  return 0;
 }
 
 template <typename CB, typename D_T>
-void ns_udp_send::init(ns_udp* handle,
+int ns_udp_send::init(ns_udp* handle,
                        const std::vector<uv_buf_t>& bufs,
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
   bufs_ = bufs;
-  std::memcpy(&addr_, addr, sizeof(addr_));
+  if (addr != nullptr) {
+    addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (addr == nullptr)
+      return UV_ENOMEM;
+
+    int len = addr_size(addr);
+    std::memcpy(addr_.get(), addr, len);
+  }
+
+  return 0;
 }
 
 template <typename CB, typename D_T>
-void ns_udp_send::init(ns_udp* handle,
+int ns_udp_send::init(ns_udp* handle,
                        std::vector<uv_buf_t>&& bufs,
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
   bufs_ = std::move(bufs);
-  std::memcpy(&addr_, addr, sizeof(addr_));
+  if (addr != nullptr) {
+    addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (addr == nullptr)
+      return UV_ENOMEM;
+
+    int len = addr_size(addr);
+    std::memcpy(addr_.get(), addr, len);
+  }
+
+  return 0;
 }
 
 std::vector<uv_buf_t>& ns_udp_send::bufs() {
@@ -202,7 +233,7 @@ std::vector<uv_buf_t>& ns_udp_send::bufs() {
 }
 
 const sockaddr* ns_udp_send::sockaddr() {
-  return const_cast<const struct sockaddr*>(&addr_);
+  return reinterpret_cast<struct sockaddr*>(addr_.get());
 }
 
 
@@ -885,12 +916,62 @@ int ns_udp::init(uv_loop_t* loop) {
   return uv_udp_init(loop, uv_handle());
 }
 
+int ns_udp::bind(const struct sockaddr* addr, unsigned int flags) {
+  int r = uv_udp_bind(uv_handle(), addr, flags);
+  if (r == 0) {
+    if (addr == nullptr) {
+      local_addr_.reset(nullptr);
+    } else {
+      local_addr_.reset(new (std::nothrow) struct sockaddr_storage());
+      if (local_addr_ == nullptr)
+        return UV_ENOMEM;
+
+      int len = addr_size(addr);
+      std::memcpy(local_addr_.get(), addr, len);
+    }
+  }
+
+  return r;
+}
+
+int ns_udp::connect(const struct sockaddr* addr) {
+  int r = uv_udp_connect(uv_handle(), addr);
+  if (r == 0) {
+    if (addr == nullptr) {
+      remote_addr_.reset(nullptr);
+    } else {
+      remote_addr_.reset(new (std::nothrow) struct sockaddr_storage());
+      if (remote_addr_ == nullptr)
+        return UV_ENOMEM;
+
+      int len = addr_size(addr);
+      std::memcpy(remote_addr_.get(), addr, len);
+    }
+  }
+
+  return r;
+}
+
+int ns_udp::try_send(const uv_buf_t bufs[],
+                     size_t nbufs,
+                     const struct sockaddr* addr) {
+  return uv_udp_try_send(uv_handle(), bufs, nbufs, addr);
+}
+
+int ns_udp::try_send(const std::vector<uv_buf_t>& bufs,
+                     const struct sockaddr* addr) {
+  return uv_udp_try_send(uv_handle(), bufs.data(), bufs.size(), addr);
+}
+
 int ns_udp::send(ns_udp_send* req,
                  const uv_buf_t bufs[],
                  size_t nbufs,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int)) {
-  req->init(this, bufs, nbufs, addr, cb);
+  int r = req->init(this, bufs, nbufs, addr, cb);
+  if (r != 0)
+    return r;
+
   if (cb == nullptr)
     return uv_udp_send(req->uv_req(),
                        uv_handle(),
@@ -910,7 +991,10 @@ int ns_udp::send(ns_udp_send* req,
                  const std::vector<uv_buf_t>& bufs,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int)) {
-  req->init(this, bufs, addr, cb);
+  int r = req->init(this, bufs, addr, cb);
+  if (r != 0)
+    return r;
+
   if (cb == nullptr)
     return uv_udp_send(req->uv_req(),
                        uv_handle(),
@@ -933,7 +1017,10 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
-  req->init(this, bufs, nbufs, addr, cb, data);
+  int r = req->init(this, bufs, nbufs, addr, cb, data);
+  if (r != 0)
+    return r;
+
   if (cb == nullptr)
     return uv_udp_send(req->uv_req(),
                        uv_handle(),
@@ -964,7 +1051,10 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void(*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
-  req->init(this, bufs, addr, cb, data);
+  int r = req->init(this, bufs, addr, cb, data);
+  if (r != 0)
+    return r;
+
   if (cb == nullptr)
     return uv_udp_send(req->uv_req(),
                        uv_handle(),
@@ -986,6 +1076,28 @@ int ns_udp::send(ns_udp_send* req,
                  void(*cb)(ns_udp_send*, int, void*),
                  std::nullptr_t) {
   return send(req, bufs, addr, cb, NSUV_CAST_NULLPTR);
+}
+
+const sockaddr* ns_udp::local_addr() {
+  if (local_addr_ == nullptr) {
+    local_addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (local_addr_ == nullptr)
+      return nullptr;
+
+    int len = sizeof(struct sockaddr_storage);
+    int r = uv_udp_getsockname(
+               uv_handle(),
+               reinterpret_cast<struct sockaddr*>(local_addr_.get()),
+               &len);
+    if (r != 0)
+      local_addr_.reset(nullptr);
+  }
+
+  return reinterpret_cast<struct sockaddr*>(local_addr_.get());
+}
+
+const sockaddr* ns_udp::remote_addr() {
+  return reinterpret_cast<struct sockaddr*>(remote_addr_.get());
 }
 
 template <typename CB_T>
@@ -1130,6 +1242,23 @@ void ns_thread::create_proxy_(void* arg) {
     auto* wrap = static_cast<ns_thread*>(arg);
     auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
     cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
+}
+
+int util::addr_size(const struct sockaddr* addr) {
+  if (addr == nullptr) {
+    return 0;
+  }
+
+  int len;
+  if (addr->sa_family == AF_INET) {
+    len = sizeof(struct sockaddr_in);
+  } else if (addr->sa_family == AF_INET6) {
+    len = sizeof(struct sockaddr_in6);
+  } else {
+    assert(0);
+  }
+
+  return len;
 }
 
 #undef NSUV_CAST_NULLPTR
