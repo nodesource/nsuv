@@ -474,7 +474,7 @@ void ns_handle<UV_T, H_T>::close_delete_cb_(uv_handle_t* handle) {
 
 template <class UV_T, class H_T>
 uv_stream_t* ns_stream<UV_T, H_T>::base_stream() {
-  return reinterpret_cast<uv_stream_t*>(H_T::uv_handle());
+  return reinterpret_cast<uv_stream_t*>(this->uv_handle());
 }
 
 template <class UV_T, class H_T>
