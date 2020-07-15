@@ -578,11 +578,12 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 void(*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
   req->init(H_T::cast(this), bufs, cb, data);
-  return uv_write(req->uv_req(),
-                  base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
-                  nullptr);
+  if (cb == nullptr)
+    return uv_write(req->uv_req(),
+                    base_stream(),
+                    req->bufs().data(),
+                    req->bufs().size(),
+                    nullptr);
   return uv_write(req->uv_req(),
                   base_stream(),
                   req->bufs().data(),
