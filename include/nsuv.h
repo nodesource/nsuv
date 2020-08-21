@@ -526,12 +526,23 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
 
 class ns_mutex {
  public:
-  NSUV_INLINE NSUV_WUR int init();
-  NSUV_INLINE NSUV_WUR int init_recursive();
+  // Constructor for allowing auto init() and destroy().
+  NSUV_INLINE explicit ns_mutex(int* er, bool recursive = false);
+  ns_mutex() = default;
+  NSUV_INLINE ~ns_mutex();
+
+  // Leaving the manual init() available in case the user decides to use the
+  // default constructor. For cases where default constructor must be used,
+  // such as being placed as a class member, pass true to init() to enable auto
+  // destroy().
+  NSUV_INLINE NSUV_WUR int init(bool ad = false);
+  NSUV_INLINE NSUV_WUR int init_recursive(bool ad = false);
   NSUV_INLINE void destroy();
   NSUV_INLINE void lock();
   NSUV_INLINE NSUV_WUR int trylock();
   NSUV_INLINE void unlock();
+  // Return if destroy() has been called on the mutex.
+  NSUV_INLINE bool destroyed();
 
   class scoped_lock {
    public:
@@ -548,6 +559,8 @@ class ns_mutex {
 
  private:
   uv_mutex_t mutex_;
+  bool auto_destruct_ = false;
+  bool destroyed_ = false;
 };
 
 

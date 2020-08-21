@@ -1118,15 +1118,29 @@ void ns_udp::send_proxy_(uv_udp_send_t* uv_req, int status) {
 
 /* ns_mutex */
 
-int ns_mutex::init() {
+ns_mutex::ns_mutex(int* er, bool recursive) : auto_destruct_(true) {
+  *er = recursive ? init_recursive() : init();
+}
+
+ns_mutex::~ns_mutex() {
+  if (auto_destruct_)
+    destroy();
+}
+
+int ns_mutex::init(bool ad) {
+  auto_destruct_ = ad;
+  destroyed_ = false;
   return uv_mutex_init(&mutex_);
 }
 
-int ns_mutex::init_recursive() {
+int ns_mutex::init_recursive(bool ad) {
+  auto_destruct_ = ad;
+  destroyed_ = false;
   return uv_mutex_init_recursive(&mutex_);
 }
 
 void ns_mutex::destroy() {
+  destroyed_ = true;
   uv_mutex_destroy(&mutex_);
 }
 
@@ -1142,6 +1156,12 @@ void ns_mutex::unlock() {
   uv_mutex_unlock(&mutex_);
 }
 
+bool ns_mutex::destroyed() {
+  return destroyed_;
+}
+
+// TODO(trevnorris): Why did I give the option to create a scoped_lock without
+// actually locking the mutex?
 ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex, bool do_lock)
     : mutex_ref_(mutex) {
   if (do_lock) {
