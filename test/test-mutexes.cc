@@ -19,6 +19,7 @@ TEST_CASE("thread_mutex", "[mutex]") {
   REQUIRE(mutex.destroyed());
 }
 
+
 TEST_CASE("thread_mutex_init", "[mutex]") {
   ns_mutex mutex;
   int r;
@@ -79,6 +80,24 @@ TEST_CASE("thread_mutex_auto_scoped", "[mutex]") {
 }
 
 
+TEST_CASE("thread_mutex_const_scoped", "[mutex]") {
+  ns_mutex mutex;
+  int r;
+
+  r = mutex.init();
+  REQUIRE(r == 0);
+
+  {
+    ns_mutex::scoped_lock lock(mutex);
+    REQUIRE(mutex.trylock() == UV_EBUSY);
+    mutex.unlock();
+    REQUIRE(mutex.trylock() == 0);
+  }
+  mutex.destroy();
+  REQUIRE(mutex.destroyed());
+}
+
+
 TEST_CASE("thread_mutex_recursive", "[mutex]") {
   ns_mutex mutex;
   int r;
@@ -124,6 +143,27 @@ TEST_CASE("thread_mutex_recursive_scoped", "[mutex]") {
     ns_mutex::scoped_lock lock1(&mutex);
     {
       ns_mutex::scoped_lock lock2(&mutex);
+      REQUIRE(mutex.trylock() == 0);
+      mutex.unlock();
+    }
+  }
+
+  mutex.destroy();
+  REQUIRE(mutex.destroyed());
+}
+
+
+TEST_CASE("thread_mutex_const_recursive_scoped", "[mutex]") {
+  ns_mutex mutex;
+  int r;
+
+  r = mutex.init_recursive();
+  REQUIRE(r == 0);
+
+  {
+    ns_mutex::scoped_lock lock1(mutex);
+    {
+      ns_mutex::scoped_lock lock2(mutex);
       REQUIRE(mutex.trylock() == 0);
       mutex.unlock();
     }

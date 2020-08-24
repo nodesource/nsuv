@@ -548,19 +548,20 @@ class ns_mutex {
   class scoped_lock {
    public:
     scoped_lock() = delete;
-    scoped_lock(const scoped_lock&) = delete;
     scoped_lock(scoped_lock&&) = delete;
     scoped_lock& operator=(const scoped_lock&) = delete;
     scoped_lock& operator=(scoped_lock&&) = delete;
-    NSUV_INLINE explicit scoped_lock(ns_mutex* mutex, bool do_lock = true);
+    NSUV_INLINE explicit scoped_lock(ns_mutex* mutex);
+    NSUV_INLINE explicit scoped_lock(const ns_mutex& mutex);
     NSUV_INLINE ~scoped_lock();
 
    private:
-    ns_mutex* mutex_ref_;
+    const ns_mutex& ns_mutex_;
   };
 
  private:
-  uv_mutex_t mutex_;
+  friend class scoped_lock;
+  mutable uv_mutex_t mutex_;
   bool auto_destruct_ = false;
   bool destroyed_ = false;
 };

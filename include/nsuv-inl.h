@@ -1153,17 +1153,16 @@ bool ns_mutex::destroyed() {
   return destroyed_;
 }
 
-// TODO(trevnorris): Why did I give the option to create a scoped_lock without
-// actually locking the mutex?
-ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex, bool do_lock)
-    : mutex_ref_(mutex) {
-  if (do_lock) {
-    mutex_ref_->lock();
-  }
+ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex) : ns_mutex_(*mutex) {
+  uv_mutex_lock(&ns_mutex_.mutex_);
+}
+
+ns_mutex::scoped_lock::scoped_lock(const ns_mutex& mutex) : ns_mutex_(mutex) {
+  uv_mutex_lock(&ns_mutex_.mutex_);
 }
 
 ns_mutex::scoped_lock::~scoped_lock() {
-  mutex_ref_->unlock();
+  uv_mutex_unlock(&ns_mutex_.mutex_);
 }
 
 
