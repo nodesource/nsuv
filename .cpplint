@@ -1,0 +1,4 @@
+set noparent
+filter=-build/include_what_you_use,-legal/copyright,-readability/nolint
+linelength=80
+
