@@ -732,8 +732,53 @@ int ns_tcp::init(uv_loop_t* loop) {
   return uv_tcp_init(loop, uv_handle());
 }
 
+int ns_tcp::init_ex(uv_loop_t* loop, unsigned int flags) {
+  return uv_tcp_init_ex(loop, uv_handle(), flags);
+}
+
+int ns_tcp::open(uv_os_sock_t sock) {
+  return uv_tcp_open(uv_handle(), sock);
+}
+
+int ns_tcp::nodelay(bool enable) {
+  return uv_tcp_nodelay(uv_handle(), enable);
+}
+
+int ns_tcp::keepalive(bool enable, int delay) {
+  return uv_tcp_keepalive(uv_handle(), enable, delay);
+}
+
+int ns_tcp::simultaneous_accepts(bool enable) {
+  return uv_tcp_simultaneous_accepts(uv_handle(), enable);
+}
+
 int ns_tcp::bind(const struct sockaddr* addr, unsigned int flags) {
   return uv_tcp_bind(uv_handle(), addr, flags);
+}
+
+int ns_tcp::getsockname(struct sockaddr* name, int* namelen) {
+  return uv_tcp_getsockname(uv_handle(), name, namelen);
+}
+
+int ns_tcp::getpeername(struct sockaddr* name, int* namelen) {
+  return uv_tcp_getpeername(uv_handle(), name, namelen);
+}
+
+int ns_tcp::close_reset(void (*cb)(ns_tcp*)) {
+  close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+  return uv_tcp_close_reset(uv_handle(), &close_reset_proxy_<decltype(cb)>);
+}
+
+template <typename D_T>
+int ns_tcp::close_reset(void (*cb)(ns_tcp*, D_T*), D_T* data) {
+  close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+  close_reset_data_ = data;
+  return uv_tcp_close_reset(uv_handle(),
+                            &close_reset_proxy_<decltype(cb), D_T>);
+}
+
+int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
+  return close_reset(cb, NSUV_CAST_NULLPTR);
 }
 
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
@@ -765,14 +810,6 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
   return connect(req, addr, cb, NSUV_CAST_NULLPTR);
 }
 
-int ns_tcp::nodelay(bool enable) {
-  return uv_tcp_nodelay(uv_handle(), enable);
-}
-
-int ns_tcp::keepalive(bool enable, int delay) {
-  return uv_tcp_keepalive(uv_handle(), enable, delay);
-}
-
 template <typename CB_T>
 void ns_tcp::connect_proxy_(uv_connect_t* uv_req, int status) {
   auto* creq = ns_connect<ns_tcp>::cast(uv_req);
@@ -785,6 +822,20 @@ void ns_tcp::connect_proxy_(uv_connect_t* uv_req, int status) {
   auto* creq = ns_connect<ns_tcp>::cast(uv_req);
   auto* cb_ = reinterpret_cast<CB_T>(creq->req_cb_);
   cb_(creq, status, static_cast<D_T*>(creq->req_cb_data_));
+}
+
+template <typename CB_T>
+void ns_tcp::close_reset_proxy_(uv_handle_t* handle) {
+  ns_tcp* wrap = ns_tcp::cast(handle);
+  auto* cb = reinterpret_cast<CB_T>(wrap->close_reset_cb_ptr_);
+  cb(wrap);
+}
+
+template <typename CB_T, typename D_T>
+void ns_tcp::close_reset_proxy_(uv_handle_t* handle) {
+  ns_tcp* wrap = ns_tcp::cast(handle);
+  auto* cb = reinterpret_cast<CB_T>(wrap->close_reset_cb_ptr_);
+  cb(wrap, static_cast<D_T*>(wrap->close_reset_data_));
 }
 
 

@@ -2,8 +2,6 @@
 #include "./catch.hpp"
 #include "./helpers.h"
 
-#define TEST_PORT 35123
-
 using nsuv::ns_udp;
 using nsuv::ns_udp_send;
 
@@ -21,7 +19,11 @@ static void cl_send_cb(ns_udp_send* req, int status) {
   server.close(nullptr);
 }
 
-TEST_CASE("udp", "[udp-connect]") {
+TEST_CASE("udp_connect", "[udp]") {
+#if defined(__PASE__)
+  RETURN_SKIP(
+      "IBMi PASE's UDP connection can not be disconnected with AF_UNSPEC.");
+#endif
   ns_udp_send req;
   uv_buf_t buf;
   struct sockaddr_in ext_addr;
@@ -33,8 +35,8 @@ TEST_CASE("udp", "[udp-connect]") {
 
   buf = uv_buf_init(const_cast<char*>(exit_str), 4);
 
-  REQUIRE(0 == uv_ip4_addr("8.8.8.8", TEST_PORT, &ext_addr));
-  REQUIRE(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &lo_addr));
+  REQUIRE(0 == uv_ip4_addr("8.8.8.8", kTestPort, &ext_addr));
+  REQUIRE(0 == uv_ip4_addr("127.0.0.1", kTestPort, &lo_addr));
 
   REQUIRE(nullptr == server.local_addr());
   REQUIRE(nullptr == server.remote_addr());

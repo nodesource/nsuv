@@ -386,8 +386,23 @@ class ns_poll : public ns_handle<uv_poll_t, ns_poll> {
 class ns_tcp : public ns_stream<uv_tcp_t, ns_tcp> {
  public:
   NSUV_INLINE NSUV_WUR int init(uv_loop_t* loop);
+  NSUV_INLINE NSUV_WUR int init_ex(uv_loop_t* loop, unsigned int flags);
+  NSUV_INLINE NSUV_WUR int open(uv_os_sock_t sock);
+  NSUV_INLINE NSUV_WUR int nodelay(bool enable);
+  NSUV_INLINE NSUV_WUR int keepalive(bool enable, int delay);
+  NSUV_INLINE NSUV_WUR int simultaneous_accepts(bool enable);
+
   NSUV_INLINE NSUV_WUR int bind(const struct sockaddr* addr,
                                 unsigned int flags = 0);
+  NSUV_INLINE NSUV_WUR int getsockname(struct sockaddr* name, int* namelen);
+  NSUV_INLINE NSUV_WUR int getpeername(struct sockaddr* name, int* namelen);
+
+  NSUV_INLINE NSUV_WUR int close_reset(void (*cb)(ns_tcp*));
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int close_reset(void (*cb)(ns_tcp*, D_T*), D_T* data);
+  NSUV_INLINE NSUV_WUR int close_reset(void (*cb)(ns_tcp*, void*),
+                                       std::nullptr_t);
+
   NSUV_INLINE NSUV_WUR int connect(ns_connect<ns_tcp>* req,
                                    const struct sockaddr* addr,
                                    void (*cb)(ns_connect<ns_tcp>*, int));
@@ -400,11 +415,13 @@ class ns_tcp : public ns_stream<uv_tcp_t, ns_tcp> {
                                    const struct sockaddr* addr,
                                    void (*cb)(ns_connect<ns_tcp>*, int, void*),
                                    std::nullptr_t);
-  NSUV_INLINE NSUV_WUR int nodelay(bool enable);
-  NSUV_INLINE NSUV_WUR int keepalive(bool enable, int delay);
 
  private:
   NSUV_PROXY_FNS(connect_proxy_, uv_connect_t* uv_req, int status)
+  NSUV_PROXY_FNS(close_reset_proxy_, uv_handle_t* handle)
+
+  void (*close_reset_cb_ptr_)() = nullptr;
+  void* close_reset_data_ = nullptr;
 };
 
 
