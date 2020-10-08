@@ -17,6 +17,7 @@
 #include <uv.h>
 
 constexpr int kTestPort = 9123;
+constexpr int kTestPort2 = 9124;
 
 // TODO(trevnorris): This is temporary while libuv tests are being ported. A
 // more permanent solution should be made.
