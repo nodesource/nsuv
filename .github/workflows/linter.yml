@@ -1,0 +1,32 @@
+name: linter
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  PYTHON_VERSION: 3.8
+
+jobs:
+  lint-include:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Lint C/C++ files
+        run: make lint
+  lint-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Lint C/C++ files
+        run: make lint-test
