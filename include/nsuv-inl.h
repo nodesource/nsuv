@@ -3,12 +3,10 @@
 
 #include "./nsuv.h"
 
-#include <uv.h>
 #include <cassert>
 #include <cstring>  // memcpy
 #include <new>      // nothrow
 #include <utility>  // move
-#include <vector>
 
 namespace nsuv {
 
