@@ -2,8 +2,8 @@ TOPLEVEL ?= $(dir $(lastword $(MAKEFILE_LIST)))
 CPPLINT ?= $(TOPLEVEL)/tools/cpplint.py
 PYTHON ?= python
 
-CXXFLAGS = -Wall -Wextra -O0 -g
-LDFLAGS = -luv -lrt -lpthread -lnsl -ldl
+CXXFLAGS += -Wall -Wextra -O0 -g
+LDFLAGS += -luv -lrt -lpthread -lnsl -ldl
 
 GCC_CXXFLAGS = -DMESSAGE='"Compiled with GCC"'
 CLANG_CXXFLAGS = -fstandalone-debug -DMESSAGE='"Compiled with Clang"'
