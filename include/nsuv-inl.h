@@ -773,12 +773,12 @@ template <typename D_T>
 int ns_tcp::close_reset(void (*cb)(ns_tcp*, D_T*), D_T* data) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   close_reset_data_ = data;
-  return uv_tcp_close_reset(uv_handle(), &close_reset_proxy_<decltype(cb)>);
+  return uv_tcp_close_reset(uv_handle(),
+                            &close_reset_proxy_<decltype(cb), D_T>);
 }
 
 int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
-  // TODO(trevnorris): This is causing a compile error.
-  //return close_reset(cb, NSUV_CAST_NULLPTR);
+  return close_reset(cb, NSUV_CAST_NULLPTR);
 }
 
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
