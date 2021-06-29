@@ -405,7 +405,11 @@ void ns_handle<UV_T, H_T>::close(void (*cb)(H_T*, void*), std::nullptr_t) {
 
 template <class UV_T, class H_T>
 void ns_handle<UV_T, H_T>::close_and_delete() {
-  uv_close(base_handle(), close_delete_cb_);
+  if (get_type() == UV_UNKNOWN_HANDLE) {
+    delete H_T::cast(base_handle());
+  } else {
+    uv_close(base_handle(), close_delete_cb_);
+  }
 }
 
 template <class UV_T, class H_T>
