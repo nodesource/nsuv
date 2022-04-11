@@ -1218,6 +1218,82 @@ ns_mutex::scoped_lock::~scoped_lock() {
   uv_mutex_unlock(&ns_mutex_.mutex_);
 }
 
+/* ns_rwlock */
+
+ns_rwlock::ns_rwlock(int* er) : auto_destruct_(true) {
+  *er = init();
+}
+
+ns_rwlock::~ns_rwlock() {
+  if (auto_destruct_)
+    destroy();
+}
+
+int ns_rwlock::init(bool ad) {
+  auto_destruct_ = ad;
+  destroyed_ = false;
+  return uv_rwlock_init(&lock_);
+}
+
+void ns_rwlock::destroy() {
+  destroyed_ = true;
+  uv_rwlock_destroy(&lock_);
+}
+
+void ns_rwlock::rdlock() {
+  uv_rwlock_rdlock(&lock_);
+}
+
+int ns_rwlock::tryrdlock() {
+  return uv_rwlock_tryrdlock(&lock_);
+}
+
+void ns_rwlock::rdunlock() {
+  uv_rwlock_rdunlock(&lock_);
+}
+
+void ns_rwlock::wrlock() {
+  uv_rwlock_wrlock(&lock_);
+}
+
+int ns_rwlock::trywrlock() {
+  return uv_rwlock_trywrlock(&lock_);
+}
+
+void ns_rwlock::wrunlock() {
+  uv_rwlock_wrunlock(&lock_);
+}
+
+bool ns_rwlock::destroyed() {
+  return destroyed_;
+}
+
+ns_rwlock::scoped_rdlock::scoped_rdlock(ns_rwlock* lock) : ns_rwlock_(*lock) {
+  uv_rwlock_rdlock(&ns_rwlock_.lock_);
+}
+
+ns_rwlock::scoped_rdlock::scoped_rdlock(const ns_rwlock& lock) :
+    ns_rwlock_(lock) {
+  uv_rwlock_rdlock(&ns_rwlock_.lock_);
+}
+
+ns_rwlock::scoped_rdlock::~scoped_rdlock() {
+  uv_rwlock_rdunlock(&ns_rwlock_.lock_);
+}
+
+ns_rwlock::scoped_wrlock::scoped_wrlock(ns_rwlock* lock) : ns_rwlock_(*lock) {
+  uv_rwlock_wrlock(&ns_rwlock_.lock_);
+}
+
+ns_rwlock::scoped_wrlock::scoped_wrlock(const ns_rwlock& lock) :
+    ns_rwlock_(lock) {
+  uv_rwlock_wrlock(&ns_rwlock_.lock_);
+}
+
+ns_rwlock::scoped_wrlock::~scoped_wrlock() {
+  uv_rwlock_wrunlock(&ns_rwlock_.lock_);
+}
+
 
 /* ns_thread */
 

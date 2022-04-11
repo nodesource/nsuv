@@ -584,6 +584,67 @@ class ns_mutex {
 };
 
 
+/* ns_rwlock */
+
+class ns_rwlock {
+ public:
+  // Constructor for allowing auto init() and destroy().
+  NSUV_INLINE explicit ns_rwlock(int* er);
+  ns_rwlock() = default;
+  NSUV_INLINE ~ns_rwlock();
+
+  // Leaving the manual init() available in case the user decides to use the
+  // default constructor. For cases where default constructor must be used,
+  // such as being placed as a class member, pass true to init() to enable auto
+  // destroy().
+  NSUV_INLINE NSUV_WUR int init(bool ad = false);
+  NSUV_INLINE void destroy();
+  NSUV_INLINE void rdlock();
+  NSUV_INLINE NSUV_WUR int tryrdlock();
+  NSUV_INLINE void rdunlock();
+  NSUV_INLINE void wrlock();
+  NSUV_INLINE NSUV_WUR int trywrlock();
+  NSUV_INLINE void wrunlock();
+  // Return if destroy() has been called on the mutex.
+  NSUV_INLINE bool destroyed();
+
+  class scoped_rdlock {
+   public:
+    scoped_rdlock() = delete;
+    scoped_rdlock(scoped_rdlock&&) = delete;
+    scoped_rdlock& operator=(const scoped_rdlock&) = delete;
+    scoped_rdlock& operator=(scoped_rdlock&&) = delete;
+    NSUV_INLINE explicit scoped_rdlock(ns_rwlock* lock);
+    NSUV_INLINE explicit scoped_rdlock(const ns_rwlock& lock);
+    NSUV_INLINE ~scoped_rdlock();
+
+   private:
+    const ns_rwlock& ns_rwlock_;
+  };
+
+  class scoped_wrlock {
+   public:
+    scoped_wrlock() = delete;
+    scoped_wrlock(scoped_wrlock&&) = delete;
+    scoped_wrlock& operator=(const scoped_wrlock&) = delete;
+    scoped_wrlock& operator=(scoped_wrlock&&) = delete;
+    NSUV_INLINE explicit scoped_wrlock(ns_rwlock* lock);
+    NSUV_INLINE explicit scoped_wrlock(const ns_rwlock& lock);
+    NSUV_INLINE ~scoped_wrlock();
+
+   private:
+    const ns_rwlock& ns_rwlock_;
+  };
+
+ private:
+  friend class scoped_rdlock;
+  friend class scoped_wrlock;
+  mutable uv_rwlock_t lock_;
+  bool auto_destruct_ = false;
+  bool destroyed_ = false;
+};
+
+
 /* ns_thread */
 
 class ns_thread {
