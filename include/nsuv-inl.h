@@ -3,7 +3,7 @@
 
 #include "./nsuv.h"
 
-#include <cassert>
+#include <cstdlib>  // abort
 #include <cstring>  // memcpy
 #include <new>      // nothrow
 #include <utility>  // move
@@ -1397,7 +1397,7 @@ int util::addr_size(const struct sockaddr* addr) {
   } else if (addr->sa_family == AF_INET6) {
     len = sizeof(struct sockaddr_in6);
   } else {
-    assert(0);
+    abort();
   }
 
   return len;
