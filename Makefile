@@ -33,6 +33,6 @@ lint-test:
 		--filter=-legal/copyright,-readability/check test/*.cc test/*.h
 
 test:
-	$(CXX) ${CXXFLAGS} -std=c++1y -o out/run_tests test/test*.cc ${LDFLAGS}
+	$(CXX) ${CXXFLAGS} -std=c++11 -o out/run_tests test/test*.cc ${LDFLAGS}
 
 .PHONY: clean lint lint-test test
