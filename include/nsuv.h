@@ -558,6 +558,7 @@ class ns_mutex {
   NSUV_INLINE void unlock();
   // Return if destroy() has been called on the mutex.
   NSUV_INLINE bool destroyed();
+  NSUV_INLINE uv_mutex_t* base();
 
   class scoped_lock {
    public:
@@ -604,6 +605,7 @@ class ns_rwlock {
   NSUV_INLINE void wrunlock();
   // Return if destroy() has been called on the mutex.
   NSUV_INLINE bool destroyed();
+  NSUV_INLINE uv_rwlock_t* base();
 
   class scoped_rdlock {
    public:

@@ -1195,6 +1195,10 @@ bool ns_mutex::destroyed() {
   return destroyed_;
 }
 
+uv_mutex_t* ns_mutex::base() {
+  return &mutex_;
+}
+
 ns_mutex::scoped_lock::scoped_lock(ns_mutex* mutex) : ns_mutex_(*mutex) {
   uv_mutex_lock(&ns_mutex_.mutex_);
 }
@@ -1255,6 +1259,10 @@ void ns_rwlock::wrunlock() {
 
 bool ns_rwlock::destroyed() {
   return destroyed_;
+}
+
+uv_rwlock_t* ns_rwlock::base() {
+  return &lock_;
 }
 
 ns_rwlock::scoped_rdlock::scoped_rdlock(ns_rwlock* lock) : ns_rwlock_(*lock) {
