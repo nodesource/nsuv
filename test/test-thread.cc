@@ -1,5 +1,4 @@
 #include "../include/nsuv-inl.h"
-#include "./catch.hpp"
 #include "./helpers.h"
 
 #include <stdio.h>
@@ -120,12 +119,12 @@ TEST_CASE("threadpool_multiple_event_loops", "[thread]") {
   int did_run[kThreadCount] = { 0 };
 
   for (size_t i = 0; i < kThreadCount; i++) {
-    REQUIRE(0 == threads[i].create(do_work, &did_run[i]));
+    ASSERT_EQ(0, threads[i].create(do_work, &did_run[i]));
   }
 
   for (size_t i = 0; i < kThreadCount; i++) {
-    REQUIRE(0 == threads[i].join());
-    REQUIRE(1 == did_run[i]);
+    ASSERT_EQ(0, threads[i].join());
+    ASSERT_EQ(1, did_run[i]);
   }
 }
 
@@ -140,10 +139,10 @@ static void thread_entry(ns_thread* thread, size_t* arg) {
 TEST_CASE("thread_create", "[thread]") {
   ns_thread thread;
   size_t arg[] = { 42 };
-  REQUIRE(0 == thread.create(thread_entry, arg));
-  REQUIRE(0 == thread.join());
-  REQUIRE(1 == thread_called);
-  REQUIRE(thread.equal(uv_thread_self()));
+  ASSERT_EQ(0, thread.create(thread_entry, arg));
+  ASSERT_EQ(0, thread.join());
+  ASSERT_EQ(1, thread_called);
+  ASSERT(thread.equal(uv_thread_self()));
 }
 
 
@@ -159,14 +158,14 @@ static void tls_thread(ns_thread* arg) {
 TEST_CASE("thread_local_storage", "[thread]") {
   char name[] = "main";
   ns_thread threads[2];
-  REQUIRE(0 == uv_key_create(&tls_key));
-  REQUIRE(nullptr == uv_key_get(&tls_key));
+  ASSERT_EQ(0, uv_key_create(&tls_key));
+  ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, name);
-  REQUIRE(name == uv_key_get(&tls_key));
-  REQUIRE(0 == threads[0].create(tls_thread));
-  REQUIRE(0 == threads[1].create(tls_thread));
-  REQUIRE(0 == threads[0].join());
-  REQUIRE(0 == threads[1].join());
+  ASSERT_EQ(name, uv_key_get(&tls_key));
+  ASSERT_EQ(0, threads[0].create(tls_thread));
+  ASSERT_EQ(0, threads[1].create(tls_thread));
+  ASSERT_EQ(0, threads[0].join());
+  ASSERT_EQ(0, threads[1].join());
   uv_key_delete(&tls_key);
 }
 
@@ -204,8 +203,8 @@ static void thread_check_stack(ns_thread*, uv_thread_options_t* arg) {
 TEST_CASE("thread_stack_size", "[thread]") {
   ns_thread thread;
   uv_thread_options_t* arg = nullptr;
-  REQUIRE(0 == thread.create(thread_check_stack, arg));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create(thread_check_stack, arg));
+  ASSERT_EQ(0, thread.join());
 }
 
 
@@ -215,29 +214,29 @@ TEST_CASE("thread_stack_size_explicit", "[thread]") {
 
   options.flags = UV_THREAD_HAS_STACK_SIZE;
   options.stack_size = 1024 * 1024;
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 
   options.stack_size = 8 * 1024 * 1024;  // larger than most default os sizes
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 
   options.stack_size = 0;
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 
 #ifdef PTHREAD_STACK_MIN
   options.stack_size = PTHREAD_STACK_MIN - 42;  // unaligned size
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 
   options.stack_size = PTHREAD_STACK_MIN / 2 - 42;  // unaligned size
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 #endif
 
   // unaligned size, should be larger than PTHREAD_STACK_MIN
   options.stack_size = 1234567;
-  REQUIRE(0 == thread.create_ex(&options, thread_check_stack, &options));
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, thread.create_ex(&options, thread_check_stack, &options));
+  ASSERT_EQ(0, thread.join());
 }

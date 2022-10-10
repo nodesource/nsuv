@@ -68,18 +68,18 @@ TEST_CASE("async_operations", "[async]") {
   ns_async async;
   resources res = { &thread, &async, &mutex, &prepare };
 
-  REQUIRE(0 == prepare.init(uv_default_loop()));
-  REQUIRE(0 == prepare.start(prepare_cb, &res));
-  REQUIRE(0 == async.init(uv_default_loop(), async_cb, &res));
-  REQUIRE(0 == mutex.init());
+  ASSERT_EQ(0, prepare.init(uv_default_loop()));
+  ASSERT_EQ(0, prepare.start(prepare_cb, &res));
+  ASSERT_EQ(0, async.init(uv_default_loop(), async_cb, &res));
+  ASSERT_EQ(0, mutex.init());
 
   mutex.lock();
 
-  REQUIRE(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  REQUIRE(0 < prepare_cb_called);
-  REQUIRE(3 == async_cb_called);
-  REQUIRE(2 == close_cb_called);
-  REQUIRE(0 == thread.join());
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_LT(0, prepare_cb_called);
+  ASSERT_EQ(3, async_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_EQ(0, thread.join());
 
   make_valgrind_happy();
 }
