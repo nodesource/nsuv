@@ -662,16 +662,18 @@ class ns_thread {
                                      std::nullptr_t);
   NSUV_INLINE NSUV_WUR int join();
   NSUV_INLINE uv_thread_t base();
-  NSUV_INLINE uv_thread_t owner();
-  NSUV_INLINE NSUV_WUR int equal(uv_thread_t* t2);
-  NSUV_INLINE NSUV_WUR int equal(uv_thread_t&& t2);
+  NSUV_INLINE NSUV_WUR bool equal(uv_thread_t* t2);
+  NSUV_INLINE NSUV_WUR bool equal(uv_thread_t&& t2);
+  NSUV_INLINE NSUV_WUR bool equal(ns_thread* t2);
+  NSUV_INLINE NSUV_WUR bool equal(ns_thread&& t2);
+  static NSUV_INLINE bool equal(const uv_thread_t& t1, const uv_thread_t& t2);
+  static NSUV_INLINE bool equal(uv_thread_t&& t1, uv_thread_t&& t2);
   static NSUV_INLINE uv_thread_t self();
 
  private:
   NSUV_PROXY_FNS(create_proxy_, void* arg)
 
   uv_thread_t thread_;
-  uv_thread_t parent_;
   void (*thread_cb_ptr_)() = nullptr;
   void* thread_cb_data_ = nullptr;
 };

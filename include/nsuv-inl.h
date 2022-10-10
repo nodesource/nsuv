@@ -1287,7 +1287,6 @@ ns_rwlock::scoped_wrlock::~scoped_wrlock() {
 /* ns_thread */
 
 int ns_thread::create(void (*cb)(ns_thread*)) {
-  parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   if (cb == nullptr)
     return uv_thread_create(&thread_, nullptr, this);
@@ -1296,7 +1295,6 @@ int ns_thread::create(void (*cb)(ns_thread*)) {
 
 template <typename D_T>
 int ns_thread::create(void (*cb)(ns_thread*, D_T*), D_T* data) {
-  parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   thread_cb_data_ = data;
   if (cb == nullptr)
@@ -1310,7 +1308,6 @@ int ns_thread::create(void (*cb)(ns_thread*, void*), std::nullptr_t) {
 
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void (*cb)(ns_thread*)) {
-  parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   if (cb == nullptr)
     return uv_thread_create_ex(&thread_, params, nullptr, this);
@@ -1322,7 +1319,6 @@ template <typename D_T>
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          void (*cb)(ns_thread*, D_T*),
                          D_T* data) {
-  parent_ = uv_thread_self();
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   thread_cb_data_ = data;
   if (cb == nullptr)
@@ -1345,16 +1341,28 @@ uv_thread_t ns_thread::base() {
   return thread_;
 }
 
-uv_thread_t ns_thread::owner() {
-  return parent_;
+bool ns_thread::equal(uv_thread_t* t2) {
+  return uv_thread_equal(&thread_, t2) == 0;
 }
 
-int ns_thread::equal(uv_thread_t* t2) {
-  return uv_thread_equal(&thread_, t2);
+bool ns_thread::equal(uv_thread_t&& t2) {
+  return uv_thread_equal(&thread_, &t2) == 0;
 }
 
-int ns_thread::equal(uv_thread_t&& t2) {
-  return uv_thread_equal(&thread_, &t2);
+bool ns_thread::equal(ns_thread* t2) {
+  return t2->equal(&thread_) == 0;
+}
+
+bool ns_thread::equal(ns_thread&& t2) {
+  return t2.equal(&thread_) == 0;
+}
+
+bool ns_thread::equal(const uv_thread_t& t1, const uv_thread_t& t2) {
+  return uv_thread_equal(&t1, &t2) == 0;
+}
+
+bool ns_thread::equal(uv_thread_t&& t1, uv_thread_t&& t2) {
+  return uv_thread_equal(&t1, &t2) == 0;
 }
 
 uv_thread_t ns_thread::self() {
