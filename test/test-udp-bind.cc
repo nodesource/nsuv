@@ -1,5 +1,4 @@
 #include "../include/nsuv-inl.h"
-#include "./catch.hpp"
 #include "./helpers.h"
 
 using nsuv::ns_udp;

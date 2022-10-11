@@ -21,6 +21,16 @@ constexpr int kTestPort = 9123;
 constexpr int kTestPort2 = 9124;
 constexpr int kTestPort3 = 9125;
 
+#ifdef _WIN32
+constexpr char kTestPipename[] = "\\\\?\\pipe\\uv-test";
+constexpr char kTestPipename2[] = "\\\\?\\pipe\\uv-test2";
+constexpr char kTestPipename3[] = "\\\\?\\pipe\\uv-test3";
+#else
+constexpr char kTestPipename[] = "/tmp/uv-test-sock";
+constexpr char kTestPipename2[] = "/tmp/uv-test-sock2";
+constexpr char kTestPipename3[] = "/tmp/uv-test-sock3";
+#endif
+
 // TODO(trevnorris): This is temporary while libuv tests are being ported. A
 // more permanent solution should be made.
 #define container_of(ptr, type, member)                                       \
@@ -28,6 +38,9 @@ constexpr int kTestPort3 = 9125;
 
 #define SOCKADDR_CAST(addr) \
   reinterpret_cast<struct sockaddr*>(addr)
+
+#define SOCKADDR_CONST_CAST(addr) \
+  reinterpret_cast<const struct sockaddr*>(addr)
 
 // Wrap ASSERT macros to use REQUIRE, etc.
 #define ASSERT(expr)                                       \
