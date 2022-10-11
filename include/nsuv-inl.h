@@ -988,6 +988,14 @@ int ns_udp::connect(const struct sockaddr* addr) {
   return r;
 }
 
+int ns_udp::getpeername(struct sockaddr* name, int* namelen) {
+  return uv_udp_getpeername(uv_handle(), name, namelen);
+}
+
+int ns_udp::getsockname(struct sockaddr* name, int* namelen) {
+  return uv_udp_getsockname(uv_handle(), name, namelen);
+}
+
 int ns_udp::try_send(const uv_buf_t bufs[],
                      size_t nbufs,
                      const struct sockaddr* addr) {
@@ -1121,8 +1129,7 @@ const sockaddr* ns_udp::local_addr() {
       return nullptr;
 
     int len = sizeof(struct sockaddr_storage);
-    int r = uv_udp_getsockname(
-        uv_handle(),
+    int r = getsockname(
         reinterpret_cast<struct sockaddr*>(local_addr_.get()),
         &len);
     if (r != 0)

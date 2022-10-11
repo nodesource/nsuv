@@ -483,6 +483,8 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
   NSUV_INLINE NSUV_WUR int bind(const struct sockaddr* addr,
                                 unsigned int flags);
   NSUV_INLINE NSUV_WUR int connect(const struct sockaddr* addr);
+  NSUV_INLINE NSUV_WUR int getpeername(struct sockaddr* name, int* namelen);
+  NSUV_INLINE NSUV_WUR int getsockname(struct sockaddr* name, int* namelen);
   NSUV_INLINE NSUV_WUR int try_send(const uv_buf_t bufs[],
                                     size_t nbufs,
                                     const struct sockaddr* addr);
