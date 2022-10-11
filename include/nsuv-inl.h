@@ -173,20 +173,11 @@ int ns_udp_send::init(ns_udp* handle,
                       CB cb,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
+  std::vector<uv_buf_t> vbufs;
   for (size_t i = 0; i < nbufs; i++) {
-    bufs_.push_back(bufs[i]);
+    vbufs.push_back(bufs[i]);
   }
-
-  if (addr != nullptr) {
-    addr_.reset(new (std::nothrow) struct sockaddr_storage());
-    if (addr == nullptr)
-      return UV_ENOMEM;
-
-    int len = addr_size(addr);
-    std::memcpy(addr_.get(), addr, len);
-  }
-
-  return 0;
+  return init(handle, std::move(vbufs), addr, cb, data);
 }
 
 template <typename CB, typename D_T>
