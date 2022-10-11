@@ -70,7 +70,6 @@ class ns_base_req : public UV_T {
   NSUV_INLINE void init(CB cb, D_T* data = nullptr);
 
  public:
-  /* Return the ns_handle that has ownership of this req. */
   NSUV_INLINE UV_T* uv_req();
   NSUV_INLINE uv_req_t* base_req();
   NSUV_INLINE uv_req_type get_type();
@@ -102,17 +101,22 @@ template <class UV_T, class R_T, class H_T>
 class ns_req : public ns_base_req<UV_T, R_T> {
  public:
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle, CB cb, D_T* data = nullptr);
-  /* Return the ns_handle that has ownership of this req. */
+  NSUV_INLINE void init(CB cb, D_T* data = nullptr);
+  /* Return the ns_handle that has ownership of this req. This uses the
+   * UV_T::handle field, and downcasts from the uv_handle_t to H_T.
+   */
   NSUV_INLINE H_T* handle();
+  /* Add a method to overwrite the handle field. Not sure why they'd need to,
+   * but there are tests that do this. This way it's less likely that a
+   * uv_handle_t is set that isn't upcast from an ns_handle.
+   */
+  NSUV_INLINE void handle(H_T* handle);
 
  private:
   template <class, class>
   friend class ns_stream;
   friend class ns_tcp;
   friend class ns_udp;
-
-  H_T* handle_ = nullptr;
 };
 
 
@@ -127,8 +131,7 @@ class ns_connect : public ns_req<uv_connect_t, ns_connect<H_T>, H_T> {
   friend class ns_tcp;
 
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle,
-                        const struct sockaddr* addr,
+  NSUV_INLINE void init(const struct sockaddr* addr,
                         CB cb,
                         D_T* data = nullptr);
   struct sockaddr_storage addr_;
@@ -148,19 +151,16 @@ class ns_write : public ns_req<uv_write_t, ns_write<H_T>, H_T> {
   friend class ns_tcp;
 
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle,
-                        const uv_buf_t bufs[],
+  NSUV_INLINE void init(const uv_buf_t bufs[],
                         size_t nbufs,
                         CB cb,
                         D_T* data = nullptr);
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle,
-                        const std::vector<uv_buf_t>& bufs,
+  NSUV_INLINE void init(const std::vector<uv_buf_t>& bufs,
                         CB cb,
                         D_T* data = nullptr);
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(H_T* handle,
-                        std::vector<uv_buf_t>&& bufs,
+  NSUV_INLINE void init(std::vector<uv_buf_t>&& bufs,
                         CB cb,
                         D_T* data = nullptr);
 
@@ -179,21 +179,18 @@ class ns_udp_send : public ns_req<uv_udp_send_t, ns_udp_send, ns_udp> {
   friend class ns_udp;
 
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE int init(ns_udp* handle,
-                       const uv_buf_t bufs[],
+  NSUV_INLINE int init(const uv_buf_t bufs[],
                        size_t nbufs,
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data = nullptr);
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE int init(ns_udp* handle,
-                       const std::vector<uv_buf_t>& bufs,
+  NSUV_INLINE int init(const std::vector<uv_buf_t>& bufs,
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data = nullptr);
   template <typename CB, typename D_T = void*>
-  NSUV_INLINE int init(ns_udp* handle,
-                       std::vector<uv_buf_t>&& bufs,
+  NSUV_INLINE int init(std::vector<uv_buf_t>&& bufs,
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data = nullptr);

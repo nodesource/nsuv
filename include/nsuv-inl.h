@@ -96,26 +96,29 @@ R_T* ns_base_req<UV_T, R_T>::cast(UV_T* req) {
 
 template <class UV_T, class R_T, class H_T>
 template <typename CB, typename D_T>
-void ns_req<UV_T, R_T, H_T>::init(H_T* handle, CB cb, D_T* data) {
-  handle_ = handle;
+void ns_req<UV_T, R_T, H_T>::init(CB cb, D_T* data) {
   ns_base_req<UV_T, R_T>::req_cb_ = reinterpret_cast<void (*)()>(cb);
   ns_base_req<UV_T, R_T>::req_cb_data_ = data;
 }
 
 template <class UV_T, class R_T, class H_T>
 H_T* ns_req<UV_T, R_T, H_T>::handle() {
-  return handle_;
+  return H_T::cast(static_cast<UV_T*>(this)->handle);
+}
+
+template <class UV_T, class R_T, class H_T>
+void ns_req<UV_T, R_T, H_T>::handle(H_T* handle) {
+  static_cast<UV_T*>(this)->handle = handle->uv_handle();
 }
 
 /* ns_connect */
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_connect<H_T>::init(H_T* handle,
-                           const struct sockaddr* addr,
+void ns_connect<H_T>::init(const struct sockaddr* addr,
                            CB cb,
                            D_T* data) {
-  ns_req<uv_connect_t, ns_connect<H_T>, H_T>::init(handle, cb, data);
+  ns_req<uv_connect_t, ns_connect<H_T>, H_T>::init(cb, data);
   std::memcpy(&addr_, addr, addr_size(addr));
 }
 
@@ -130,8 +133,8 @@ const sockaddr* ns_connect<H_T>::sockaddr() {
 template <class H_T>
 template <typename CB, typename D_T>
 void ns_write<H_T>::init(
-    H_T* handle, const uv_buf_t bufs[], size_t nbufs, CB cb, D_T* data) {
-  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(handle, cb, data);
+    const uv_buf_t bufs[], size_t nbufs, CB cb, D_T* data) {
+  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
@@ -139,21 +142,19 @@ void ns_write<H_T>::init(
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_write<H_T>::init(H_T* handle,
-                         const std::vector<uv_buf_t>& bufs,
+void ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
                          CB cb,
                          D_T* data) {
-  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(handle, cb, data);
+  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   bufs_ = bufs;
 }
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_write<H_T>::init(H_T* handle,
-                         std::vector<uv_buf_t>&& bufs,
+void ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
                          CB cb,
                          D_T* data) {
-  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(handle, cb, data);
+  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   bufs_ = std::move(bufs);
 }
 
@@ -166,27 +167,25 @@ std::vector<uv_buf_t>& ns_write<H_T>::bufs() {
 /* ns_udp_send */
 
 template <typename CB, typename D_T>
-int ns_udp_send::init(ns_udp* handle,
-                      const uv_buf_t bufs[],
+int ns_udp_send::init(const uv_buf_t bufs[],
                       size_t nbufs,
                       const struct sockaddr* addr,
                       CB cb,
                       D_T* data) {
-  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
+  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
   std::vector<uv_buf_t> vbufs;
   for (size_t i = 0; i < nbufs; i++) {
     vbufs.push_back(bufs[i]);
   }
-  return init(handle, std::move(vbufs), addr, cb, data);
+  return init(std::move(vbufs), addr, cb, data);
 }
 
 template <typename CB, typename D_T>
-int ns_udp_send::init(ns_udp* handle,
-                      const std::vector<uv_buf_t>& bufs,
+int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
                       const struct sockaddr* addr,
                       CB cb,
                       D_T* data) {
-  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
+  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
   bufs_ = bufs;
   if (addr != nullptr) {
     addr_.reset(new (std::nothrow) struct sockaddr_storage());
@@ -201,12 +200,11 @@ int ns_udp_send::init(ns_udp* handle,
 }
 
 template <typename CB, typename D_T>
-int ns_udp_send::init(ns_udp* handle,
-                      std::vector<uv_buf_t>&& bufs,
+int ns_udp_send::init(std::vector<uv_buf_t>&& bufs,
                       const struct sockaddr* addr,
                       CB cb,
                       D_T* data) {
-  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(handle, cb, data);
+  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
   bufs_ = std::move(bufs);
   if (addr != nullptr) {
     addr_.reset(new (std::nothrow) struct sockaddr_storage());
@@ -495,7 +493,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
-  req->init(H_T::cast(this), bufs, nbufs, cb);
+  req->init(bufs, nbufs, cb);
   if (cb == nullptr)
     return uv_write(req->uv_req(),
                     base_stream(),
@@ -513,7 +511,7 @@ template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
-  req->init(H_T::cast(this), bufs, cb);
+  req->init(bufs, cb);
   if (cb == nullptr)
     return uv_write(req->uv_req(),
                     base_stream(),
@@ -534,7 +532,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 size_t nbufs,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
-  req->init(H_T::cast(this), bufs, nbufs, cb, data);
+  req->init(bufs, nbufs, cb, data);
   if (cb == nullptr)
     return uv_write(req->uv_req(),
                     base_stream(),
@@ -563,7 +561,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
-  req->init(H_T::cast(this), bufs, cb, data);
+  req->init(bufs, cb, data);
   if (cb == nullptr)
     return uv_write(req->uv_req(),
                     base_stream(),
@@ -777,7 +775,7 @@ int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void (*cb)(ns_connect<ns_tcp>*, int)) {
-  req->init(this, addr, cb);
+  req->init(addr, cb);
   if (cb == nullptr)
     return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
   return uv_tcp_connect(
@@ -789,7 +787,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void (*cb)(ns_connect<ns_tcp>*, int, D_T*),
                     D_T* data) {
-  req->init(this, addr, cb, data);
+  req->init(addr, cb, data);
   if (cb == nullptr)
     return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
   return uv_tcp_connect(
@@ -1006,7 +1004,7 @@ int ns_udp::send(ns_udp_send* req,
                  size_t nbufs,
                  const struct sockaddr* addr,
                  void (*cb)(ns_udp_send*, int)) {
-  int r = req->init(this, bufs, nbufs, addr, cb);
+  int r = req->init(bufs, nbufs, addr, cb);
   if (r != 0)
     return r;
 
@@ -1029,7 +1027,7 @@ int ns_udp::send(ns_udp_send* req,
                  const std::vector<uv_buf_t>& bufs,
                  const struct sockaddr* addr,
                  void (*cb)(ns_udp_send*, int)) {
-  int r = req->init(this, bufs, addr, cb);
+  int r = req->init(bufs, addr, cb);
   if (r != 0)
     return r;
 
@@ -1055,7 +1053,7 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void (*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
-  int r = req->init(this, bufs, nbufs, addr, cb, data);
+  int r = req->init(bufs, nbufs, addr, cb, data);
   if (r != 0)
     return r;
 
@@ -1089,7 +1087,7 @@ int ns_udp::send(ns_udp_send* req,
                  const struct sockaddr* addr,
                  void (*cb)(ns_udp_send*, int, D_T*),
                  D_T* data) {
-  int r = req->init(this, bufs, addr, cb, data);
+  int r = req->init(bufs, addr, cb, data);
   if (r != 0)
     return r;
 
