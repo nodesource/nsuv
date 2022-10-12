@@ -1014,6 +1014,37 @@ int ns_udp::try_send(const std::vector<uv_buf_t>& bufs,
 int ns_udp::send(ns_udp_send* req,
                  const uv_buf_t bufs[],
                  size_t nbufs,
+                 const struct sockaddr* addr) {
+  int r = req->init(bufs, nbufs, addr, NSUV_CAST_NULLPTR);
+  if (r != 0)
+    return r;
+
+  return uv_udp_send(req->uv_req(),
+                     uv_handle(),
+                     req->bufs().data(),
+                     req->bufs().size(),
+                     addr,
+                     nullptr);
+}
+
+int ns_udp::send(ns_udp_send* req,
+                 const std::vector<uv_buf_t>& bufs,
+                 const struct sockaddr* addr) {
+  int r = req->init(bufs, addr, NSUV_CAST_NULLPTR);
+  if (r != 0)
+    return r;
+
+  return uv_udp_send(req->uv_req(),
+                     uv_handle(),
+                     req->bufs().data(),
+                     req->bufs().size(),
+                     addr,
+                     nullptr);
+}
+
+int ns_udp::send(ns_udp_send* req,
+                 const uv_buf_t bufs[],
+                 size_t nbufs,
                  const struct sockaddr* addr,
                  void (*cb)(ns_udp_send*, int)) {
   int r = req->init(bufs, nbufs, addr, cb);

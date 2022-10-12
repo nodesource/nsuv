@@ -493,6 +493,13 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
   NSUV_INLINE NSUV_WUR int send(ns_udp_send* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
+                                const struct sockaddr* addr);
+  NSUV_INLINE NSUV_WUR int send(ns_udp_send* req,
+                                const std::vector<uv_buf_t>& bufs,
+                                const struct sockaddr* addr);
+  NSUV_INLINE NSUV_WUR int send(ns_udp_send* req,
+                                const uv_buf_t bufs[],
+                                size_t nbufs,
                                 const struct sockaddr* addr,
                                 void (*cb)(ns_udp_send*, int));
   NSUV_INLINE NSUV_WUR int send(ns_udp_send* req,
