@@ -3,6 +3,10 @@
 
 #include "./nsuv.h"
 
+#if !defined(_WIN32)
+#include <sys/un.h>  // sockaddr_un
+#endif
+
 #include <cstdlib>  // abort
 #include <cstring>  // memcpy
 #include <new>      // nothrow
@@ -1408,7 +1412,10 @@ int util::addr_size(const struct sockaddr* addr) {
     len = sizeof(struct sockaddr_in);
   } else if (addr->sa_family == AF_INET6) {
     len = sizeof(struct sockaddr_in6);
+  } else if (addr->sa_family == SOCK_STREAM) {
+    len = sizeof(struct sockaddr_un);
   } else {
+    fprintf(stderr, "unsupported sa_family: %hu\n", addr->sa_family);
     abort();
   }
 
