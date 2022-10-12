@@ -480,6 +480,7 @@ NSUV_LOOP_WATCHER_DEFINE(prepare)
 class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
  public:
   NSUV_INLINE NSUV_WUR int init(uv_loop_t*);
+  NSUV_INLINE NSUV_WUR int init_ex(uv_loop_t*, unsigned int);
   NSUV_INLINE NSUV_WUR int bind(const struct sockaddr* addr,
                                 unsigned int flags);
   NSUV_INLINE NSUV_WUR int connect(const struct sockaddr* addr);

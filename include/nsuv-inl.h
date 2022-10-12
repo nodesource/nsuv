@@ -956,6 +956,10 @@ int ns_udp::init(uv_loop_t* loop) {
   return uv_udp_init(loop, uv_handle());
 }
 
+int ns_udp::init_ex(uv_loop_t* loop, unsigned int flags) {
+  return uv_udp_init_ex(loop, uv_handle(), flags);
+}
+
 int ns_udp::bind(const struct sockaddr* addr, unsigned int flags) {
   int r = uv_udp_bind(uv_handle(), addr, flags);
   if (r == 0) {
