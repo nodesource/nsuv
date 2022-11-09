@@ -31,6 +31,8 @@ constexpr char kTestPipename2[] = "/tmp/uv-test-sock2";
 constexpr char kTestPipename3[] = "/tmp/uv-test-sock3";
 #endif
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
 // TODO(trevnorris): This is temporary while libuv tests are being ported. A
 // more permanent solution should be made.
 #define container_of(ptr, type, member)                                       \
