@@ -1452,8 +1452,7 @@ int util::addr_size(const struct sockaddr* addr) {
   } else if (addr->sa_family == SOCK_STREAM) {
     len = sizeof(struct sockaddr_un);
   } else {
-    fprintf(stderr, "unsupported sa_family: %hu\n", addr->sa_family);
-    abort();
+    return UV_EINVAL;
   }
 
   return len;
