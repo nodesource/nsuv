@@ -21,6 +21,8 @@ LINT_SOURCES = \
 	include/nsuv.h \
 	include/nsuv-inl.h
 
+all: nsuv
+
 clean:
 	@rm -f $(TOPLEVEL)/out/run_tests
 
@@ -32,8 +34,8 @@ lint-test:
 	@cd $(TOPLEVEL) && $(PYTHON) $(CPPLINT) \
 		--filter=-legal/copyright,-readability/check test/*.cc test/*.h
 
-test:
+nsuv:
 	mkdir -p out/
-	$(CXX) ${CXXFLAGS} -std=c++11 -o out/run_tests test/test*.cc ${LDFLAGS}
+	$(CXX) ${CXXFLAGS} -std=c++14 -o out/run_tests test/test*.cc ${LDFLAGS}
 
-.PHONY: clean lint lint-test test
+.PHONY: clean lint lint-test nsuv
