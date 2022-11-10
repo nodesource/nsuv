@@ -139,6 +139,8 @@ template <typename CB, typename D_T>
 void ns_write<H_T>::init(
     const uv_buf_t bufs[], size_t nbufs, CB cb, D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
+  // Clear this in case it's being reused.
+  bufs_.clear();
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
