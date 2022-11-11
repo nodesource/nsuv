@@ -119,11 +119,15 @@ void ns_req<UV_T, R_T, H_T>::handle(H_T* handle) {
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_connect<H_T>::init(const struct sockaddr* addr,
-                           CB cb,
-                           D_T* data) {
+int ns_connect<H_T>::init(const struct sockaddr* addr, CB cb, D_T* data) {
+  int len = addr_size(addr);
+  if (len < 0)
+    return len;
+
   ns_req<uv_connect_t, ns_connect<H_T>, H_T>::init(cb, data);
-  std::memcpy(&addr_, addr, addr_size(addr));
+  std::memcpy(&addr_, addr, len);
+
+  return 0;
 }
 
 template <class H_T>
@@ -199,6 +203,9 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
       return UV_ENOMEM;
 
     int len = addr_size(addr);
+    if (len < 0)
+      return len;
+
     std::memcpy(addr_.get(), addr, len);
   }
 
@@ -218,6 +225,9 @@ int ns_udp_send::init(std::vector<uv_buf_t>&& bufs,
       return UV_ENOMEM;
 
     int len = addr_size(addr);
+    if (len < 0)
+      return len;
+
     std::memcpy(addr_.get(), addr, len);
   }
 
@@ -781,7 +791,9 @@ int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void (*cb)(ns_connect<ns_tcp>*, int)) {
-  req->init(addr, cb);
+  int ret = req->init(addr, cb);
+  if (ret != 0)
+    return ret;
   if (cb == nullptr)
     return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
   return uv_tcp_connect(
@@ -793,7 +805,9 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void (*cb)(ns_connect<ns_tcp>*, int, D_T*),
                     D_T* data) {
-  req->init(addr, cb, data);
+  int ret = req->init(addr, cb, data);
+  if (ret != 0)
+    return ret;
   if (cb == nullptr)
     return uv_tcp_connect(req->uv_req(), uv_handle(), addr, nullptr);
   return uv_tcp_connect(
@@ -973,6 +987,9 @@ int ns_udp::bind(const struct sockaddr* addr, unsigned int flags) {
         return UV_ENOMEM;
 
       int len = addr_size(addr);
+      if (len < 0)
+        return len;
+
       std::memcpy(local_addr_.get(), addr, len);
     }
   }
@@ -991,6 +1008,9 @@ int ns_udp::connect(const struct sockaddr* addr) {
         return UV_ENOMEM;
 
       int len = addr_size(addr);
+      if (len < 0)
+        return len;
+
       std::memcpy(remote_addr_.get(), addr, len);
     }
   }

@@ -131,9 +131,9 @@ class ns_connect : public ns_req<uv_connect_t, ns_connect<H_T>, H_T> {
   friend class ns_tcp;
 
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(const struct sockaddr* addr,
-                        CB cb,
-                        D_T* data = nullptr);
+  NSUV_INLINE NSUV_WUR int init(const struct sockaddr* addr,
+                                CB cb,
+                                D_T* data = nullptr);
   struct sockaddr_storage addr_;
 };
 
