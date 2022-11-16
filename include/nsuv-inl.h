@@ -1469,7 +1469,7 @@ int util::addr_size(const struct sockaddr* addr) {
     len = sizeof(struct sockaddr_in);
   } else if (addr->sa_family == AF_INET6) {
     len = sizeof(struct sockaddr_in6);
-  } else if (addr->sa_family == SOCK_STREAM) {
+  } else if (addr->sa_family == AF_UNIX) {
     len = sizeof(struct sockaddr_un);
   } else {
     return UV_EINVAL;
