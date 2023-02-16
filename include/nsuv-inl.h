@@ -1219,6 +1219,67 @@ void ns_udp::send_proxy_(uv_udp_send_t* uv_req, int status) {
 }
 
 
+/* ns_loop */
+
+int ns_loop::init() {
+  return uv_loop_init(this);
+}
+
+int ns_loop::close() {
+  return uv_loop_close(this);
+}
+
+int ns_loop::alive() {
+  return uv_loop_alive(this);
+}
+
+template <typename... Args>
+int ns_loop::configure(uv_loop_option option, Args&&... args) {
+  return uv_loop_configure(option, std::forward<Args>(args)...);
+}
+
+int ns_loop::fork() {
+  return uv_loop_fork(this);
+}
+
+int ns_loop::run(uv_run_mode mode) {
+  return uv_run(this, mode);
+}
+
+void ns_loop::stop() {
+  uv_stop(this);
+}
+
+int ns_loop::backend_fd() {
+  return uv_backend_fd(this);
+}
+
+int ns_loop::backend_timeout() {
+  return uv_backend_timeout(this);
+}
+
+uint64_t ns_loop::now() {
+  return uv_now(this);
+}
+
+void ns_loop::update_time() {
+  uv_update_time(this);
+}
+
+template <typename D_T>
+D_T* ns_loop::get_data() {
+  return static_cast<D_T*>(data);
+}
+
+void ns_loop::set_data(void* ptr) {
+  data = ptr;
+}
+
+size_t ns_loop::size() {
+  return uv_loop_size();
+}
+
+
 /* ns_mutex */
 
 ns_mutex::ns_mutex(int* er, bool recursive) : auto_destruct_(true) {

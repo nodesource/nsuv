@@ -547,6 +547,35 @@ class ns_udp : public ns_handle<uv_udp_t, ns_udp> {
  */
 
 
+/* ns_loop */
+
+class ns_loop : public uv_loop_t {
+ public:
+  ns_loop() = default;
+  NSUV_INLINE NSUV_WUR int init();
+  NSUV_INLINE NSUV_WUR int close();
+  NSUV_INLINE NSUV_WUR int alive();
+  template <typename... Args>
+  NSUV_INLINE NSUV_WUR int configure(uv_loop_option option, Args&&... args);
+  NSUV_INLINE NSUV_WUR int fork();
+  NSUV_INLINE NSUV_WUR int run(uv_run_mode mode = UV_RUN_DEFAULT);
+  NSUV_INLINE void stop();
+  NSUV_INLINE NSUV_WUR int backend_fd();
+  NSUV_INLINE NSUV_WUR int backend_timeout();
+  NSUV_INLINE NSUV_WUR uint64_t now();
+  // TODO(trevnorris): need to template type the arg.
+  NSUV_INLINE void walk(uv_walk_cb walk_cb, void* arg);
+  NSUV_INLINE void update_time();
+
+  /* Enforce better type safety on data getter/setter. */
+  template <typename D_T>
+  NSUV_INLINE D_T* get_data();
+  NSUV_INLINE void set_data(void* ptr);
+
+  static NSUV_INLINE size_t size();
+};
+
+
 /* ns_mutex */
 
 class ns_mutex {
