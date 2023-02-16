@@ -321,6 +321,91 @@ void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
 }
 
 
+/* ns_work */
+
+int ns_work::queue_work(uv_loop_t* loop,
+                        void (*work_cb)(ns_work*),
+                        void (*after_cb)(ns_work*, int)) {
+  work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
+  after_cb_ptr_ = reinterpret_cast<void (*)()>(after_cb);
+
+  return uv_queue_work(
+      loop,
+      this,
+      work_cb == nullptr ? nullptr : &work_proxy_<decltype(work_cb)>,
+      after_cb == nullptr ? nullptr : &after_proxy_<decltype(after_cb)>);
+}
+
+template <typename D_T>
+int ns_work::queue_work(uv_loop_t* loop,
+                        void (*work_cb)(ns_work*, D_T*),
+                        void (*after_cb)(ns_work*, int, D_T*),
+                        D_T* data) {
+  work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
+  after_cb_ptr_ = reinterpret_cast<void (*)()>(after_cb);
+  cb_data_ = data;
+
+  // Need a nullptr check in case someone decides to static_cast a nullptr to
+  // the work_cb sig. Yes the user shouldn't do this but still need to check.
+  return uv_queue_work(
+      loop,
+      this,
+      work_cb == nullptr ? nullptr : &work_proxy_<decltype(work_cb), D_T>,
+      after_cb == nullptr ? nullptr : &after_proxy_<decltype(after_cb), D_T>);
+}
+
+int ns_work::queue_work(uv_loop_t* loop, void (*work_cb)(ns_work*)) {
+  work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
+  return uv_queue_work(
+      loop,
+      this,
+      work_cb == nullptr ? nullptr : &work_proxy_<decltype(work_cb)>,
+      nullptr);
+}
+
+template <typename D_T>
+int ns_work::queue_work(uv_loop_t* loop,
+                        void (*work_cb)(ns_work*, D_T*),
+                        D_T* data) {
+  work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
+  cb_data_ = data;
+
+  return uv_queue_work(
+      loop,
+      this,
+      work_cb == nullptr ? nullptr : &work_proxy_<decltype(work_cb), D_T>,
+      nullptr);
+}
+
+template <typename CB_T>
+void ns_work::work_proxy_(uv_work_t* req) {
+  auto* w_req = ns_work::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(w_req->work_cb_ptr_);
+  cb(w_req);
+}
+
+template <typename CB_T>
+void ns_work::after_proxy_(uv_work_t* req, int status) {
+  auto* w_req = ns_work::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(w_req->after_cb_ptr_);
+  cb(w_req, status);
+}
+
+template <typename CB_T, typename D_T>
+void ns_work::work_proxy_(uv_work_t* req) {
+  auto* w_req = ns_work::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(w_req->work_cb_ptr_);
+  cb(w_req, static_cast<D_T*>(w_req->cb_data_));
+}
+
+template <typename CB_T, typename D_T>
+void ns_work::after_proxy_(uv_work_t* req, int status) {
+  auto* w_req = ns_work::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(w_req->after_cb_ptr_);
+  cb(w_req, status, static_cast<D_T*>(w_req->cb_data_));
+}
+
+
 /* ns_handle */
 
 template <class UV_T, class H_T>

@@ -53,6 +53,7 @@ class ns_tcp;
 class ns_timer;
 class ns_prepare;
 class ns_udp;
+class ns_work;
 
 /* everything else */
 class ns_mutex;
@@ -228,6 +229,36 @@ class ns_addrinfo : public ns_base_req<uv_getaddrinfo_t, ns_addrinfo> {
 
   void (*addrinfo_cb_ptr_)() = nullptr;
   void* addrinfo_cb_data_ = nullptr;
+};
+
+
+/* ns_work */
+
+class ns_work : public ns_base_req<uv_work_t, ns_work> {
+ public:
+  NSUV_INLINE NSUV_WUR int queue_work(uv_loop_t* loop,
+                                      void (*work_cb)(ns_work*),
+                                      void (*after_cb)(ns_work*, int));
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int queue_work(uv_loop_t* loop,
+                                      void (*work_cb)(ns_work*, D_T*),
+                                      void (*after_cb)(ns_work*, int, D_T*),
+                                      D_T* data);
+  // libuv allows passing nullptr as after_cb, so create another overload.
+  NSUV_INLINE NSUV_WUR int queue_work(uv_loop_t* loop,
+                                      void (*work_cb)(ns_work*));
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int queue_work(uv_loop_t* loop,
+                                      void (*work_cb)(ns_work*, D_T*),
+                                      D_T* data);
+
+ private:
+  NSUV_PROXY_FNS(work_proxy_, uv_work_t*);
+  NSUV_PROXY_FNS(after_proxy_, uv_work_t*, int);
+
+  void (*work_cb_ptr_)() = nullptr;
+  void (*after_cb_ptr_)() = nullptr;
+  void* cb_data_ = nullptr;
 };
 
 
