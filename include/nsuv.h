@@ -232,6 +232,42 @@ class ns_addrinfo : public ns_base_req<uv_getaddrinfo_t, ns_addrinfo> {
 };
 
 
+/* ns_random */
+
+class ns_random : public ns_base_req<uv_random_t, ns_random> {
+ public:
+  using random_cb_sig = void (*)(ns_random*, int, void*, size_t);
+  template <typename D_T>
+  using random_cb_d_sig = void (*)(ns_random*, int, void*, size_t, D_T*);
+
+  static NSUV_INLINE NSUV_WUR int get(void* buf,
+                                      size_t buflen,
+                                      uint32_t flags);
+  NSUV_INLINE NSUV_WUR int get(uv_loop_t* loop,
+                               void* buf,
+                               size_t buflen,
+                               uint32_t flags,
+                               random_cb_sig cb);
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int get(uv_loop_t* loop,
+                               void* buf,
+                               size_t buflen,
+                               uint32_t flags,
+                               random_cb_d_sig<D_T> cb,
+                               D_T* data);
+
+ private:
+  NSUV_PROXY_FNS(random_proxy_,
+                 uv_random_t* handle,
+                 int status,
+                 void* buf,
+                 size_t buflen);
+
+  void (*random_cb_ptr_)() = nullptr;
+  void* cb_data_ = nullptr;
+};
+
+
 /* ns_work */
 
 class ns_work : public ns_base_req<uv_work_t, ns_work> {

@@ -321,6 +321,66 @@ void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
 }
 
 
+/* ns_random */
+
+int ns_random::get(void* buf, size_t buflen, uint32_t flags) {
+  return uv_random(nullptr, nullptr, buf, buflen, flags, nullptr);
+}
+
+int ns_random::get(uv_loop_t* loop,
+                   void* buf,
+                   size_t buflen,
+                   uint32_t flags,
+                   random_cb_sig cb) {
+  random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+
+  return uv_random(loop,
+                   this,
+                   buf,
+                   buflen,
+                   flags,
+                   cb == nullptr ? nullptr : &random_proxy_<decltype(cb)>);
+}
+
+template <typename D_T>
+int ns_random::get(uv_loop_t* loop,
+                   void* buf,
+                   size_t buflen,
+                   uint32_t flags,
+                   random_cb_d_sig<D_T> cb,
+                   D_T* data) {
+  random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+  cb_data_ = data;
+
+  return uv_random(loop,
+                   this,
+                   buf,
+                   buflen,
+                   flags,
+                   cb == nullptr ? nullptr : &random_proxy_<decltype(cb), D_T>);
+}
+
+template <typename CB_T>
+void ns_random::random_proxy_(uv_random_t* req,
+                              int status,
+                              void* buf,
+                              size_t buflen) {
+  auto* r_req = ns_random::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(r_req->random_cb_ptr_);
+  cb(r_req, status, buf, buflen);
+}
+
+template <typename CB_T, typename D_T>
+void ns_random::random_proxy_(uv_random_t* req,
+                              int status,
+                              void* buf,
+                              size_t buflen) {
+  auto* r_req = ns_random::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(r_req->random_cb_ptr_);
+  cb(r_req, status, buf, buflen, static_cast<D_T*>(r_req->cb_data_));
+}
+
+
 /* ns_work */
 
 int ns_work::queue_work(uv_loop_t* loop,

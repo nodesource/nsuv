@@ -3,6 +3,7 @@
 #include "./helpers.h"
 
 using nsuv::ns_addrinfo;
+using nsuv::ns_random;
 using nsuv::ns_timer;
 using nsuv::ns_work;
 
@@ -22,7 +23,7 @@ struct cancel_info {
 };
 
 struct random_info {
-  uv_random_t random_req;
+  ns_random random_req;
   char buf[1];
 };
 
@@ -129,11 +130,11 @@ static void nop_done_cb(ns_work*, int status) {
 }
 
 
-static void nop_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
-  struct random_info* ri;
-
-  ri = container_of(req, struct random_info, random_req);
-
+static void nop_random_cb(ns_random*,
+                          int status,
+                          void* buf,
+                          size_t len,
+                          random_info* ri) {
   ASSERT(status == UV_ECANCELED);
   ASSERT(buf == ri->buf);
   ASSERT(len == sizeof(ri->buf));
@@ -225,13 +226,13 @@ TEST_CASE("threadpool_cancel_random", "[threadpool]") {
 
   saturate_threadpool();
   loop = uv_default_loop();
-  ASSERT(0 == uv_random(loop,
-                        &req.random_req,
-                        &req.buf,
-                        sizeof(req.buf),
-                        0,
-                        nop_random_cb));
-  ASSERT(0 == uv_cancel(reinterpret_cast<uv_req_t*>(&req)));
+  ASSERT(0 == req.random_req.get(loop,
+                                 &req.buf,
+                                 sizeof(req.buf),
+                                 0,
+                                 nop_random_cb,
+                                 &req));
+  ASSERT(0 == req.random_req.cancel());
   ASSERT(0 == done_cb_called);
   unblock_threadpool();
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
