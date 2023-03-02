@@ -351,6 +351,138 @@ void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
 }
 
 
+/* ns_fs */
+
+uv_fs_type ns_fs::get_type() {
+  return uv_fs_get_type(this);
+}
+
+ssize_t ns_fs::get_result() {
+  return uv_fs_get_result(this);
+}
+
+int ns_fs::get_system_error() {
+  return uv_fs_get_system_error(this);
+}
+
+void* ns_fs::get_ptr() {
+  return uv_fs_get_ptr(this);
+}
+
+const char* ns_fs::get_path() {
+  return uv_fs_get_path(this);
+}
+
+uv_stat_t* ns_fs::get_statbuf() {
+  return uv_fs_get_statbuf(this);
+}
+
+void ns_fs::cleanup() {
+  return uv_fs_req_cleanup(this);
+}
+
+#define NSUV_ARGS(...) __VA_ARGS__
+#define NSUV_STRIP(X) X
+#define NSUV_PASS(X) NSUV_STRIP(NSUV_ARGS X)
+#define NSUV_FS_FN(name, P1, P2)                                               \
+  int ns_fs::name(NSUV_PASS(P1)) {                                             \
+    return uv_fs_##name(nullptr, this, NSUV_PASS(P2), nullptr);                \
+  }                                                                            \
+  int ns_fs::name(uv_loop_t* loop, NSUV_PASS(P1), ns_fs_cb cb) {               \
+    ns_base_req<uv_fs_t, ns_fs>::init(cb);                                     \
+    return uv_fs_##name(loop,                                                  \
+                        this,                                                  \
+                        NSUV_PASS(P2),                                         \
+                        NSUV_CHECK_NULL(cb, (&cb_proxy_<decltype(cb)>)));      \
+  }                                                                            \
+  template <typename D_T>                                                      \
+  int ns_fs::name(uv_loop_t* loop, NSUV_PASS(P1), ns_fs_cb_d<D_T> cb, D_T* d) {\
+    ns_base_req<uv_fs_t, ns_fs>::init(cb, d);                                  \
+    return uv_fs_##name(loop,                                                  \
+                        this,                                                  \
+                        NSUV_PASS(P2),                                         \
+                        NSUV_CHECK_NULL(cb, (&cb_proxy_<decltype(cb), D_T>))); \
+  }
+
+NSUV_FS_FN(close, (uv_file file), (file))
+NSUV_FS_FN(open, (const char* path, int flags, int mode), (path, flags, mode))
+NSUV_FS_FN(
+    read,
+    (uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset),
+    (file, bufs, nbufs, offset))
+NSUV_FS_FN(unlink, (const char* path), (path))
+NSUV_FS_FN(
+    write,
+    (uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset),
+    (file, bufs, nbufs, offset))
+NSUV_FS_FN(copyfile,
+           (const char* path, const char* new_path, int flags),
+           (path, new_path, flags))
+NSUV_FS_FN(mkdir, (const char* path, int mode), (path, mode))
+NSUV_FS_FN(mkdtemp, (const char* tpl), (tpl))
+NSUV_FS_FN(mkstemp, (const char* tpl), (tpl))
+NSUV_FS_FN(rmdir, (const char* path), (path))
+NSUV_FS_FN(scandir, (const char* path, int flags), (path, flags))
+NSUV_FS_FN(opendir, (const char* path), (path))
+NSUV_FS_FN(readdir, (uv_dir_t* dir), (dir))
+NSUV_FS_FN(closedir, (uv_dir_t* dir), (dir))
+NSUV_FS_FN(stat, (const char* path), (path))
+NSUV_FS_FN(fstat, (uv_file file), (file))
+NSUV_FS_FN(rename, (const char* path, const char* new_path), (path, new_path))
+NSUV_FS_FN(fsync, (uv_file file), (file))
+NSUV_FS_FN(fdatasync, (uv_file file), (file))
+NSUV_FS_FN(ftruncate, (uv_file file, int64_t offset), (file, offset))
+NSUV_FS_FN(sendfile,
+           (uv_file out_fd, uv_file in_fd, int64_t in_offset, size_t length),
+           (out_fd, in_fd, in_offset, length))
+NSUV_FS_FN(access, (const char* path, int mode), (path, mode))
+NSUV_FS_FN(chmod, (const char* path, int mode), (path, mode))
+NSUV_FS_FN(utime,
+           (const char* path, double atime, double mtime),
+           (path, atime, mtime))
+NSUV_FS_FN(futime,
+           (uv_file file, double atime, double mtime),
+           (file, atime, mtime))
+NSUV_FS_FN(lutime,
+           (const char* path, double atime, double mtime),
+           (path, atime, mtime))
+NSUV_FS_FN(lstat, (const char* path), (path))
+NSUV_FS_FN(link, (const char* path, const char* new_path), (path, new_path))
+NSUV_FS_FN(symlink,
+           (const char* path, const char* new_path, int flags),
+           (path, new_path, flags))
+NSUV_FS_FN(readlink, (const char* path), (path))
+NSUV_FS_FN(realpath, (const char* path), (path))
+NSUV_FS_FN(fchmod, (uv_file file, int mode), (file, mode))
+NSUV_FS_FN(chown,
+           (const char* path, uv_uid_t uid, uv_gid_t gid),
+           (path, uid, gid))
+NSUV_FS_FN(fchown, (uv_file file, uv_uid_t uid, uv_gid_t gid), (file, uid, gid))
+NSUV_FS_FN(lchown,
+           (const char* path, uv_uid_t uid, uv_gid_t gid),
+           (path, uid, gid))
+NSUV_FS_FN(statfs, (const char* path), (path))
+
+#undef NSUV_FS_FN
+#undef NSUV_PASS
+#undef NSUV_STRIP
+#undef NSUV_ARGS
+
+template <typename CB_T>
+void ns_fs::cb_proxy_(uv_fs_t* req) {
+  auto* fs_req = ns_fs::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(fs_req->req_cb_);
+  cb(fs_req);
+}
+
+template <typename CB_T, typename D_T>
+void ns_fs::cb_proxy_(uv_fs_t* req) {
+  auto* fs_req = ns_fs::cast(req);
+  auto* cb = reinterpret_cast<CB_T>(fs_req->req_cb_);
+  cb(fs_req, static_cast<D_T*>(fs_req->req_cb_data_));
+}
+
+
 /* ns_random */
 
 int ns_random::get(void* buf, size_t buflen, uint32_t flags) {

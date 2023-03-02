@@ -249,6 +249,83 @@ class ns_addrinfo : public ns_base_req<uv_getaddrinfo_t, ns_addrinfo> {
 };
 
 
+/* ns_fs */
+
+#define NSUV_FS_FN(name, ...)                                                  \
+  NSUV_INLINE NSUV_WUR int name(__VA_ARGS__);                                  \
+  NSUV_INLINE NSUV_WUR int name(uv_loop_t*, __VA_ARGS__, ns_fs_cb);            \
+  template <typename D_T>                                                      \
+  NSUV_INLINE NSUV_WUR int name(uv_loop_t*, __VA_ARGS__, ns_fs_cb_d<D_T>, D_T*);
+
+class ns_fs : public ns_base_req<uv_fs_t, ns_fs> {
+ public:
+  NSUV_CB_FNS(ns_fs_cb, ns_fs*)
+
+  NSUV_INLINE uv_fs_type get_type();
+  NSUV_INLINE ssize_t get_result();
+  NSUV_INLINE int get_system_error();
+  NSUV_INLINE void* get_ptr();
+  NSUV_INLINE const char* get_path();
+  NSUV_INLINE uv_stat_t* get_statbuf();
+  // TODO(trevnorris): Automate this in the destructor?
+  NSUV_INLINE void cleanup();
+
+  NSUV_FS_FN(close, uv_file file)
+  NSUV_FS_FN(open, const char* path, int flags, int mode)
+  NSUV_FS_FN(read,
+             uv_file file,
+             const uv_buf_t bufs[],
+             unsigned int nbufs,
+             int64_t offset)
+  NSUV_FS_FN(unlink, const char* path)
+  NSUV_FS_FN(write,
+             uv_file file,
+             const uv_buf_t bufs[],
+             unsigned int nbufs,
+             int64_t offset)
+  NSUV_FS_FN(copyfile, const char* path, const char* new_path, int flags)
+  NSUV_FS_FN(mkdir, const char* path, int mode)
+  NSUV_FS_FN(mkdtemp, const char* tpl)
+  NSUV_FS_FN(mkstemp, const char* tpl)
+  NSUV_FS_FN(rmdir, const char* path)
+  NSUV_FS_FN(scandir, const char* path, int flags)
+  NSUV_FS_FN(opendir, const char* path)
+  NSUV_FS_FN(readdir, uv_dir_t* dir)
+  NSUV_FS_FN(closedir, uv_dir_t* dir)
+  NSUV_FS_FN(stat, const char* path)
+  NSUV_FS_FN(fstat, uv_file file)
+  NSUV_FS_FN(rename, const char* path, const char* new_path)
+  NSUV_FS_FN(fsync, uv_file file)
+  NSUV_FS_FN(fdatasync, uv_file file)
+  NSUV_FS_FN(ftruncate, uv_file file, int64_t offset)
+  NSUV_FS_FN(sendfile,
+             uv_file out_fd,
+             uv_file in_fd,
+             int64_t in_offset,
+             size_t length)
+  NSUV_FS_FN(access, const char* path, int mode)
+  NSUV_FS_FN(chmod, const char* path, int mode)
+  NSUV_FS_FN(utime, const char* path, double atime, double mtime)
+  NSUV_FS_FN(futime, uv_file file, double atime, double mtime)
+  NSUV_FS_FN(lutime, const char* path, double atime, double mtime)
+  NSUV_FS_FN(lstat, const char* path)
+  NSUV_FS_FN(link, const char* path, const char* new_path)
+  NSUV_FS_FN(symlink, const char* path, const char* new_path, int flags)
+  NSUV_FS_FN(readlink, const char* path)
+  NSUV_FS_FN(realpath, const char* path)
+  NSUV_FS_FN(fchmod, uv_file file, int mode)
+  NSUV_FS_FN(chown, const char* path, uv_uid_t uid, uv_gid_t gid)
+  NSUV_FS_FN(fchown, uv_file file, uv_uid_t uid, uv_gid_t gid)
+  NSUV_FS_FN(lchown, const char* path, uv_uid_t uid, uv_gid_t gid)
+  NSUV_FS_FN(statfs, const char* path)
+
+ private:
+  NSUV_PROXY_FNS(cb_proxy_, uv_fs_t*)
+};
+
+#undef NSUV_FS_FN
+
+
 /* ns_random */
 
 class ns_random : public ns_base_req<uv_random_t, ns_random> {
