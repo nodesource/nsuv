@@ -16,7 +16,7 @@ static int bytes_read;
 static int bytes_written;
 
 
-static void close_cb(uv_handle_t*) {
+static void close_cb(ns_tcp*) {
   close_cb_called++;
 }
 
@@ -43,11 +43,11 @@ static void connect_cb(ns_connect<ns_tcp>*, int status) {
     buf = uv_buf_init(empty_cstr, 0);
     r = uv_try_write(client.base_stream(), &buf, 1);
   } while (r != 0);
-  uv_close(client.base_handle(), close_cb);
+  client.close(close_cb);
 }
 
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char base[1024];
 
   buf->base = base;
@@ -55,10 +55,10 @@ static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t*) {
+static void read_cb(ns_tcp* tcp, ssize_t nread, const uv_buf_t*) {
   if (nread < 0) {
-    uv_close(ns_tcp::cast(tcp)->base_handle(), close_cb);
-    uv_close(server.base_handle(), close_cb);
+    tcp->close(close_cb);
+    server.close(close_cb);
     return;
   }
 
@@ -73,7 +73,7 @@ static void connection_cb(ns_tcp* tcp, int status) {
   ASSERT(0 == tcp->accept(&incoming));
 
   connection_cb_called++;
-  ASSERT(0 == uv_read_start(incoming.base_stream(), alloc_cb, read_cb));
+  ASSERT(0 == incoming.read_start(alloc_cb, read_cb));
 }
 
 

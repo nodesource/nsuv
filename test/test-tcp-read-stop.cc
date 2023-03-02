@@ -27,6 +27,7 @@ static void timer_cb(ns_timer*) {
   uv_buf_t buf = uv_buf_init(ping_cstr, 4);
   ASSERT(0 == tcp_handle.write(&write_req, &buf, 1, write_cb));
   ASSERT(0 == uv_read_stop(tcp_handle.base_stream()));
+  ASSERT(0 == tcp_handle.read_stop());
 }
 
 

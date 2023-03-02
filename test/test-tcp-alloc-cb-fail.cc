@@ -28,11 +28,11 @@ static void write_cb(ns_write<ns_tcp>*, int status) {
   ASSERT(status == 0);
 }
 
-static void conn_alloc_cb(uv_handle_t*, size_t, uv_buf_t*) {
+static void conn_alloc_cb(ns_tcp*, size_t, uv_buf_t*) {
   /* Do nothing, read_cb should be called with UV_ENOBUFS. */
 }
 
-static void conn_read_cb(uv_stream_t*,
+static void conn_read_cb(ns_tcp*,
                          ssize_t nread,
                          const uv_buf_t* buf) {
   ASSERT(nread == UV_ENOBUFS);
@@ -62,9 +62,7 @@ static void connection_cb(ns_tcp* tcp, int status) {
 
   ASSERT(0 == uv_tcp_init(tcp->get_loop(), &incoming));
   ASSERT(0 == tcp->accept(&incoming));
-  ASSERT(0 == uv_read_start(incoming.base_stream(),
-                            conn_alloc_cb,
-                            conn_read_cb));
+  ASSERT(0 == incoming.read_start(conn_alloc_cb, conn_read_cb));
 
   connection_cb_called++;
 }

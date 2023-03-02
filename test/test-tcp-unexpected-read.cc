@@ -32,12 +32,12 @@ static void timer_cb(ns_timer*) {
 }
 
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t*) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t*) {
   FAIL("alloc_cb should not have been called");
 }
 
 
-static void read_cb(uv_stream_t*, ssize_t, const uv_buf_t*) {
+static void read_cb(ns_tcp*, ssize_t, const uv_buf_t*) {
   FAIL("read_cb should not have been called");
 }
 
@@ -62,7 +62,7 @@ static void connection_cb(ns_tcp* handle, int status) {
 
   ASSERT(0 == status);
   ASSERT(0 == handle->accept(&peer_handle));
-  ASSERT(0 == uv_read_start(peer_handle.base_stream(), alloc_cb, read_cb));
+  ASSERT(0 == peer_handle.read_start(alloc_cb, read_cb));
   ASSERT(0 == peer_handle.write(&write_req, &buf, 1, write_cb));
 }
 

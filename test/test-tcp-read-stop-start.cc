@@ -3,6 +3,7 @@
 
 using nsuv::ns_connect;
 using nsuv::ns_tcp;
+using nsuv::ns_write;
 
 static ns_tcp server;
 static ns_tcp connection;
@@ -12,38 +13,38 @@ static ns_tcp client;
 static ns_connect<ns_tcp> connect_req;
 
 
-static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+static void on_read2(ns_tcp* stream, ssize_t nread, const uv_buf_t* buf);
 
-static void on_write_close_immediately(uv_write_t* req, int status) {
+static void on_write_close_immediately(ns_write<ns_tcp>* req, int status) {
   ASSERT(0 == status);
 
-  ns_tcp::cast(req->handle)->close();
+  req->handle()->close();
   delete req;
 }
 
-static void on_write(uv_write_t* req, int status) {
+static void on_write(ns_write<ns_tcp>* req, int status) {
   ASSERT(0 == status);
 
   delete req;
 }
 
-static void do_write(uv_stream_t* stream, uv_write_cb cb) {
-  uv_write_t* req = new (std::nothrow) uv_write_t;
+static void do_write(ns_tcp* stream, decltype(on_write) cb) {
+  ns_write<ns_tcp>* req = new (std::nothrow) ns_write<ns_tcp>();
   char base_cstr[] = "1234578";
   uv_buf_t buf;
   buf.base = base_cstr;
   buf.len = 8;
   ASSERT_NOT_NULL(req);
-  ASSERT(0 == uv_write(req, stream, &buf, 1, cb));
+  ASSERT(0 == stream->write(req, &buf, 1, cb));
 }
 
-static void on_alloc(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void on_alloc(ns_tcp*, size_t, uv_buf_t* buf) {
   static char slab[65536];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
-static void on_read1(uv_stream_t* stream, ssize_t nread, const uv_buf_t*) {
+static void on_read1(ns_tcp* stream, ssize_t nread, const uv_buf_t*) {
   ASSERT(nread >= 0);
 
   /* Do write on a half open connection to force WSAECONNABORTED (on Windows)
@@ -51,17 +52,17 @@ static void on_read1(uv_stream_t* stream, ssize_t nread, const uv_buf_t*) {
    */
   do_write(stream, on_write);
 
-  ASSERT(0 == uv_read_stop(stream));
+  ASSERT(0 == stream->read_stop());
 
-  ASSERT(0 == uv_read_start(stream, on_alloc, on_read2));
+  ASSERT(0 == stream->read_start(on_alloc, on_read2));
 
   read_cb_called++;
 }
 
-static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t*) {
+static void on_read2(ns_tcp* stream, ssize_t nread, const uv_buf_t*) {
   ASSERT(nread < 0);
 
-  ns_tcp::cast(stream)->close();
+  stream->close();
   server.close();
 
   read_cb_called++;
@@ -74,13 +75,13 @@ static void on_connection(ns_tcp* server, int status) {
 
   ASSERT(0 == server->accept(&connection));
 
-  ASSERT(0 == uv_read_start(connection.base_stream(), on_alloc, on_read1));
+  ASSERT(0 == connection.read_start(on_alloc, on_read1));
 }
 
 static void on_connect(ns_connect<ns_tcp>*, int status) {
   ASSERT(0 == status);
 
-  do_write(client.base_stream(), on_write_close_immediately);
+  do_write(&client, on_write_close_immediately);
 }
 
 TEST_CASE("tcp_read_stop_start", "[tcp]") {

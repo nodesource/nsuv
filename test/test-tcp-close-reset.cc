@@ -65,14 +65,13 @@ static void do_close(ns_tcp* handle) {
   tcp_server.close();
 }
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char slab[1024];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
-static void read_cb2(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
-  ns_tcp* stream = ns_tcp::cast(handle);
+static void read_cb2(ns_tcp* stream, ssize_t nread, const uv_buf_t*) {
   ASSERT(stream == &tcp_client);
   if (nread == UV_EOF)
     stream->close();
@@ -81,7 +80,7 @@ static void read_cb2(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
 
 static void connect_cb(ns_connect<ns_tcp>* conn_req, int) {
   ASSERT(conn_req == &connect_req);
-  uv_read_start(tcp_client.base_stream(), alloc_cb, read_cb2);
+  ASSERT(0 == tcp_client.read_start(alloc_cb, read_cb2));
   do_write(&tcp_client);
   if (client_close)
     do_close(&tcp_client);
@@ -116,8 +115,7 @@ static void shutdown_cb(uv_shutdown_t* req, int) {
 }
 
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
-  ns_tcp* stream = ns_tcp::cast(handle);
+static void read_cb(ns_tcp* stream, ssize_t nread, const uv_buf_t*) {
   ASSERT(stream == &tcp_accepted);
   if (nread < 0) {
     stream->close();
@@ -135,7 +133,7 @@ static void connection_cb(ns_tcp* server, int status) {
   ASSERT(0 == tcp_accepted.init(loop));
   ASSERT(0 == server->accept(&tcp_accepted));
 
-  uv_read_start(tcp_accepted.base_stream(), alloc_cb, read_cb);
+  ASSERT(0 == tcp_accepted.read_start(alloc_cb, read_cb));
 }
 
 

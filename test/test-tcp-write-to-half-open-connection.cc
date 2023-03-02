@@ -8,8 +8,8 @@ using nsuv::ns_write;
 static void connection_cb(ns_tcp* server, int status);
 static void connect_cb(ns_connect<ns_tcp>* req, int status);
 static void write_cb(ns_write<ns_tcp>* req, int status);
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static void read_cb(ns_tcp* stream, ssize_t nread, const uv_buf_t* buf);
+static void alloc_cb(ns_tcp* handle, size_t suggested_size, uv_buf_t* buf);
 
 static ns_tcp tcp_server;
 static ns_tcp tcp_client;
@@ -34,7 +34,7 @@ static void connection_cb(ns_tcp* server, int status) {
   r = server->accept(&tcp_peer);
   ASSERT(r == 0);
 
-  r = uv_read_start(tcp_peer.base_stream(), alloc_cb, read_cb);
+  r = tcp_peer.read_start(alloc_cb, read_cb);
   ASSERT(r == 0);
 
   buf.base = hello_cstr;
@@ -45,14 +45,14 @@ static void connection_cb(ns_tcp* server, int status) {
 }
 
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char slab[1024];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
 
-static void read_cb(uv_stream_t*, ssize_t nread, const uv_buf_t*) {
+static void read_cb(ns_tcp*, ssize_t nread, const uv_buf_t*) {
   if (nread < 0) {
     // fprintf(stderr, "read_cb error: %s\n", uv_err_name(nread));
     ASSERT((nread == UV_ECONNRESET || nread == UV_EOF));

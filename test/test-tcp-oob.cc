@@ -19,7 +19,7 @@ static ns_connect<ns_tcp> connect_req;
 static int ticks;
 static const int kMaxTicks = 10;
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char storage[1024];
   *buf = uv_buf_init(storage, sizeof(storage));
 }
@@ -36,14 +36,14 @@ static void idle_cb(ns_idle* idle) {
 }
 
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
+static void read_cb(ns_tcp* handle, ssize_t nread, const uv_buf_t*) {
 #ifdef __MVS__
   char lbuf[12];
 #endif
   uv_os_fd_t fd;
 
   ASSERT(nread >= 0);
-  ASSERT(0 == uv_fileno(reinterpret_cast<uv_handle_t*>(handle), &fd));
+  ASSERT(0 == uv_fileno(handle->base_handle(), &fd));
   ASSERT(0 == idle.start(idle_cb));
 
 #ifdef __MVS__
@@ -67,7 +67,7 @@ static void connection_cb(ns_tcp* handle, int status) {
 
   ASSERT(0 == status);
   ASSERT(0 == handle->accept(&peer_handle));
-  ASSERT(0 == uv_read_start(peer_handle.base_stream(), alloc_cb, read_cb));
+  ASSERT(0 == peer_handle.read_start(alloc_cb, read_cb));
 
   /* Send some OOB data */
   ASSERT(0 == uv_fileno(reinterpret_cast<uv_handle_t*>(&client_handle), &fd));

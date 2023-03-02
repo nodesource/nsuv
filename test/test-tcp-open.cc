@@ -78,7 +78,7 @@ static void close_socket(uv_os_sock_t sock) {
 }
 
 
-static void alloc_cb(uv_handle_t*, size_t suggested_size, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t suggested_size, uv_buf_t* buf) {
   static char slab[65536];
   ASSERT(suggested_size <= sizeof(slab));
   buf->base = slab;
@@ -101,7 +101,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(ns_tcp* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_NOT_NULL(tcp);
 
   if (nread >= 0) {
@@ -109,12 +109,12 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(memcmp("PING", buf->base, nread) == 0);
   } else {
     ASSERT(nread == UV_EOF);
-    ns_tcp::cast(tcp)->close(close_cb);
+    tcp->close(close_cb);
   }
 }
 
 
-static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read1_cb(ns_tcp* tcp, ssize_t nread, const uv_buf_t* buf) {
   int i;
   ASSERT_NOT_NULL(tcp);
 
@@ -124,7 +124,7 @@ static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   } else {
     ASSERT(nread == UV_EOF);
     printf("GOT EOF\n");
-    ns_tcp::cast(tcp)->close(close_cb);
+    tcp->close(close_cb);
   }
 }
 
@@ -191,7 +191,7 @@ static void connect_cb(ns_connect<ns_tcp>* req, int status) {
   ASSERT(r == 0);
 
   /* Start reading */
-  r = uv_read_start(stream->base_stream(), alloc_cb, read_cb);
+  r = stream->read_start(alloc_cb, read_cb);
   ASSERT(r == 0);
 }
 
@@ -218,7 +218,7 @@ static void connect1_cb(ns_connect<ns_tcp>* req, int status) {
   ASSERT(r == 0);
 
   /* Start reading */
-  r = uv_read_start(stream->base_stream(), alloc_cb, read1_cb);
+  r = stream->read_start(alloc_cb, read1_cb);
   ASSERT(r == 0);
 }
 
@@ -351,7 +351,7 @@ TEST_CASE("tcp_open_connected", "[tcp]") {
 
   ASSERT(0 == uv_shutdown(&shutdown_req, client.base_stream(), shutdown_cb));
 
-  ASSERT(0 == uv_read_start(client.base_stream(), alloc_cb, read_cb));
+  ASSERT(0 == client.read_start(alloc_cb, read_cb));
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

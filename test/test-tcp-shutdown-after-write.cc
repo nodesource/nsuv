@@ -21,6 +21,7 @@ static int conn_close_cb_called;
 static int timer_close_cb_called;
 
 
+// TODO(trevnorris): Fix this up to use nsuv.
 static void close_cb(uv_handle_t* handle) {
   if (handle == conn.base_handle())
     conn_close_cb_called++;
@@ -31,7 +32,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char slab[64];
   buf->base = slab;
   buf->len = sizeof(slab);
@@ -54,7 +55,7 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void read_cb(uv_stream_t*, ssize_t, const uv_buf_t*) {
+static void read_cb(ns_tcp*, ssize_t, const uv_buf_t*) {
 }
 
 
@@ -64,7 +65,7 @@ static void connect_cb(uv_connect_t*, int status) {
   ASSERT(status == 0);
   connect_cb_called++;
 
-  r = uv_read_start(conn.base_stream(), alloc_cb, read_cb);
+  r = conn.read_start(alloc_cb, read_cb);
   ASSERT(r == 0);
 }
 

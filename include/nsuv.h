@@ -357,6 +357,13 @@ class ns_handle : public UV_T {
 template <class UV_T, class H_T>
 class ns_stream : public ns_handle<UV_T, H_T> {
  public:
+  using alloc_cb_sig = void (*)(H_T*, size_t, uv_buf_t*);
+  template <typename D_T>
+  using alloc_cb_d_sig = void (*)(H_T*, size_t, uv_buf_t*, D_T*);
+  using read_cb_sig = void (*)(H_T*, ssize_t, const uv_buf_t*);
+  template <typename D_T>
+  using read_cb_d_sig = void (*)(H_T*, ssize_t, const uv_buf_t*, D_T*);
+
   uv_stream_t* base_stream();
   NSUV_INLINE size_t get_write_queue_size();
   NSUV_INLINE int is_readable();
@@ -371,6 +378,13 @@ class ns_stream : public ns_handle<UV_T, H_T> {
                                   void (*cb)(H_T*, int, void*),
                                   std::nullptr_t);
   NSUV_INLINE NSUV_WUR int accept(H_T* handle);
+  NSUV_INLINE NSUV_WUR int read_start(alloc_cb_sig alloc_cb,
+                                      read_cb_sig read_cb);
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int read_start(alloc_cb_d_sig<D_T> alloc_cb,
+                                      read_cb_d_sig<D_T> read_cb,
+                                      D_T* data);
+  NSUV_INLINE NSUV_WUR int read_stop();
   NSUV_INLINE NSUV_WUR int write(ns_write<H_T>* req,
                                  const uv_buf_t bufs[],
                                  size_t nbufs,
@@ -401,10 +415,15 @@ class ns_stream : public ns_handle<UV_T, H_T> {
 
  private:
   NSUV_PROXY_FNS(listen_proxy_, uv_stream_t* handle, int status)
+  NSUV_PROXY_FNS(alloc_proxy_, uv_handle_t*, size_t, uv_buf_t*)
+  NSUV_PROXY_FNS(read_proxy_, uv_stream_t*, ssize_t, const uv_buf_t*)
   NSUV_PROXY_FNS(write_proxy_, uv_write_t* uv_req, int status)
 
   void (*listen_cb_ptr_)() = nullptr;
   void* listen_cb_data_ = nullptr;
+  void (*alloc_cb_ptr_)() = nullptr;
+  void (*read_cb_ptr_)() = nullptr;
+  void* read_cb_data_ = nullptr;
 };
 
 

@@ -704,6 +704,38 @@ int ns_stream<UV_T, H_T>::accept(H_T* handle) {
 }
 
 template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::read_start(alloc_cb_sig alloc_cb,
+                                     read_cb_sig read_cb) {
+  alloc_cb_ptr_ = reinterpret_cast<void (*)()>(alloc_cb);
+  read_cb_ptr_ = reinterpret_cast<void (*)()>(read_cb);
+
+  return uv_read_start(
+      base_stream(),
+      NSUV_CHECK_NULL(alloc_cb, (&alloc_proxy_<decltype(alloc_cb)>)),
+      NSUV_CHECK_NULL(read_cb, (&read_proxy_<decltype(read_cb)>)));
+}
+
+template <class UV_T, class H_T>
+template <typename D_T>
+int ns_stream<UV_T, H_T>::read_start(alloc_cb_d_sig<D_T> alloc_cb,
+                                     read_cb_d_sig<D_T> read_cb,
+                                     D_T* data) {
+  alloc_cb_ptr_ = reinterpret_cast<void (*)()>(alloc_cb);
+  read_cb_ptr_ = reinterpret_cast<void (*)()>(read_cb);
+  read_cb_data_ = data;
+
+  return uv_read_start(
+      base_stream(),
+      NSUV_CHECK_NULL(alloc_cb, (&alloc_proxy_<decltype(alloc_cb), D_T>)),
+      NSUV_CHECK_NULL(read_cb, (&read_proxy_<decltype(read_cb), D_T>)));
+}
+
+template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::read_stop() {
+  return uv_read_stop(base_stream());
+}
+
+template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
@@ -800,6 +832,46 @@ void ns_stream<UV_T, H_T>::listen_proxy_(uv_stream_t* handle, int status) {
   auto* server = H_T::cast(handle);
   auto* cb_ = reinterpret_cast<CB_T>(server->listen_cb_ptr_);
   cb_(server, status, static_cast<D_T*>(server->listen_cb_data_));
+}
+
+template <class UV_T, class H_T>
+template <typename CB_T>
+void ns_stream<UV_T, H_T>::alloc_proxy_(uv_handle_t* handle,
+                                        size_t suggested_size,
+                                        uv_buf_t* buf) {
+  auto* server = H_T::cast(handle);
+  auto* cb_ = reinterpret_cast<CB_T>(server->alloc_cb_ptr_);
+  cb_(server, suggested_size, buf);
+}
+
+template <class UV_T, class H_T>
+template <typename CB_T, typename D_T>
+void ns_stream<UV_T, H_T>::alloc_proxy_(uv_handle_t* handle,
+                                        size_t suggested_size,
+                                        uv_buf_t* buf) {
+  auto* server = H_T::cast(handle);
+  auto* cb_ = reinterpret_cast<CB_T>(server->listen_cb_ptr_);
+  cb_(server, suggested_size, buf, static_cast<D_T*>(server->read_cb_data_));
+}
+
+template <class UV_T, class H_T>
+template <typename CB_T>
+void ns_stream<UV_T, H_T>::read_proxy_(uv_stream_t* handle,
+                                       ssize_t nread,
+                                       const uv_buf_t* buf) {
+  auto* server = H_T::cast(handle);
+  auto* cb_ = reinterpret_cast<CB_T>(server->read_cb_ptr_);
+  cb_(server, nread, buf);
+}
+
+template <class UV_T, class H_T>
+template <typename CB_T, typename D_T>
+void ns_stream<UV_T, H_T>::read_proxy_(uv_stream_t* handle,
+                                       ssize_t nread,
+                                       const uv_buf_t* buf) {
+  auto* server = H_T::cast(handle);
+  auto* cb_ = reinterpret_cast<CB_T>(server->read_cb_ptr_);
+  cb_(server, nread, buf, static_cast<D_T*>(server->read_cb_data_));
 }
 
 template <class UV_T, class H_T>

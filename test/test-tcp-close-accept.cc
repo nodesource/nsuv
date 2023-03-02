@@ -60,20 +60,19 @@ static void connect_cb(ns_connect<ns_tcp>* req, int status) {
   ASSERT(0 == (tcp_outgoing[i]).write(&write_reqs[i], &buf, 1, write_cb));
 }
 
-static void alloc_cb(uv_handle_t*, size_t, uv_buf_t* buf) {
+static void alloc_cb(ns_tcp*, size_t, uv_buf_t* buf) {
   static char slab[1];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
-  ns_tcp* stream = ns_tcp::cast(handle);
+static void read_cb(ns_tcp* stream, ssize_t nread, const uv_buf_t*) {
   uv_loop_t* loop;
   uint32_t i;
 
   pending_incoming = stream - &tcp_incoming[0];
   ASSERT(pending_incoming < got_connections);
-  ASSERT(0 == uv_read_stop(stream->base_stream()));
+  ASSERT(0 == stream->read_stop());
   ASSERT(1 == nread);
 
   loop = stream->get_loop();
@@ -93,7 +92,7 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t*) {
   ASSERT(0 == tcp_check.connect(&tcp_check_req,
                                 SOCKADDR_CONST_CAST(&addr),
                                 connect_cb));
-  ASSERT(0 == uv_read_start(tcp_check.base_stream(), alloc_cb, read_cb));
+  ASSERT(0 == tcp_check.read_start(alloc_cb, read_cb));
 }
 
 static void connection_cb(ns_tcp* server, int) {
@@ -117,7 +116,7 @@ static void connection_cb(ns_tcp* server, int) {
   /* Once all clients are accepted - start reading */
   for (i = 0; i < ARRAY_SIZE(tcp_incoming); i++) {
     incoming = &tcp_incoming[i];
-    ASSERT(0 == uv_read_start(incoming->base_stream(), alloc_cb, read_cb));
+    ASSERT(0 == incoming->read_start(alloc_cb, read_cb));
   }
 }
 
