@@ -157,18 +157,18 @@ class ns_write : public ns_req<uv_write_t, ns_write<H_T>, H_T> {
   friend class ns_tcp;
 
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(const uv_buf_t bufs[],
-                        size_t nbufs,
-                        CB cb,
-                        D_T* data = nullptr);
+  NSUV_INLINE NSUV_WUR int init(const uv_buf_t bufs[],
+                                size_t nbufs,
+                                CB cb,
+                                D_T* data = nullptr);
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(const std::vector<uv_buf_t>& bufs,
-                        CB cb,
-                        D_T* data = nullptr);
+  NSUV_INLINE NSUV_WUR int init(const std::vector<uv_buf_t>& bufs,
+                                CB cb,
+                                D_T* data = nullptr);
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(std::vector<uv_buf_t>&& bufs,
-                        CB cb,
-                        D_T* data = nullptr);
+  NSUV_INLINE NSUV_WUR int init(std::vector<uv_buf_t>&& bufs,
+                                CB cb,
+                                D_T* data = nullptr);
 
   std::vector<uv_buf_t> bufs_;
 };

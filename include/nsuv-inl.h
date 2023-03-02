@@ -142,32 +142,46 @@ const sockaddr* ns_connect<H_T>::sockaddr() {
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_write<H_T>::init(
+int ns_write<H_T>::init(
     const uv_buf_t bufs[], size_t nbufs, CB cb, D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   // Clear this in case it's being reused.
   bufs_.clear();
+  try {
+    bufs_.reserve(nbufs);
+  } catch (...) {
+    return UV_ENOMEM;
+  }
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
+  return 0;
 }
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
-                         CB cb,
-                         D_T* data) {
+int ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
+                        CB cb,
+                        D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
-  bufs_ = bufs;
+  bufs_.clear();
+  try {
+    bufs_.reserve(bufs.size());
+  } catch (...) {
+    return UV_ENOMEM;
+  }
+  bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
+  return 0;
 }
 
 template <class H_T>
 template <typename CB, typename D_T>
-void ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
-                         CB cb,
-                         D_T* data) {
+int ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
+                        CB cb,
+                        D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   bufs_ = std::move(bufs);
+  return 0;
 }
 
 template <class H_T>
@@ -186,6 +200,11 @@ int ns_udp_send::init(const uv_buf_t bufs[],
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
   std::vector<uv_buf_t> vbufs;
+  try {
+    vbufs.reserve(nbufs);
+  } catch (...) {
+    return UV_ENOMEM;
+  }
   for (size_t i = 0; i < nbufs; i++) {
     vbufs.push_back(bufs[i]);
   }
@@ -198,7 +217,13 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
                       CB cb,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  bufs_ = bufs;
+  bufs_.clear();
+  try {
+    bufs_.reserve(bufs.size());
+  } catch (...) {
+    return UV_ENOMEM;
+  }
+  bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
   if (addr != nullptr) {
     addr_.reset(new (std::nothrow) struct sockaddr_storage());
     if (addr == nullptr)
@@ -656,7 +681,9 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
-  req->init(bufs, nbufs, cb);
+  int ret = req->init(bufs, nbufs, cb);
+  if (ret != 0)
+    return ret;
 
   return uv_write(req->uv_req(),
                   base_stream(),
@@ -669,7 +696,9 @@ template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
-  req->init(bufs, cb);
+  int ret = req->init(bufs, cb);
+  if (ret != 0)
+    return ret;
 
   return uv_write(req->uv_req(),
                   base_stream(),
@@ -685,7 +714,9 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 size_t nbufs,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
-  req->init(bufs, nbufs, cb, data);
+  int ret = req->init(bufs, nbufs, cb, data);
+  if (ret != 0)
+    return ret;
 
   return uv_write(req->uv_req(),
                   base_stream(),
@@ -709,7 +740,9 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
-  req->init(bufs, cb, data);
+  int ret = req->init(bufs, cb, data);
+  if (ret != 0)
+    return ret;
 
   return uv_write(req->uv_req(),
                   base_stream(),
