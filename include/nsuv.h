@@ -50,7 +50,10 @@ template <class>
 class ns_connect;
 template <class>
 class ns_write;
+class ns_addrinfo;
+class ns_random;
 class ns_udp_send;
+class ns_work;
 
 /* uv_handle classes */
 template <class, class>
@@ -58,15 +61,17 @@ class ns_handle;
 template <class, class>
 class ns_stream;
 class ns_async;
+class ns_check;
+class ns_idle;
 class ns_poll;
+class ns_prepare;
 class ns_tcp;
 class ns_timer;
-class ns_prepare;
 class ns_udp;
-class ns_work;
 
 /* everything else */
 class ns_mutex;
+class ns_rwlock;
 class ns_thread;
 
 /**
@@ -330,9 +335,6 @@ class ns_handle : public UV_T {
   NSUV_INLINE bool is_closing();
   NSUV_INLINE bool is_active();
 
-  /* Close the handle and run the callback. Uses a lambda to allow the callback
-   * signature to match the pointer of D_T.
-   */
   NSUV_INLINE void close();
   NSUV_INLINE void close(ns_close_cb cb);
   template <typename D_T>
