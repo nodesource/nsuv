@@ -5,6 +5,10 @@
 #include <memory>
 #include <vector>
 
+/* Allow users to define if they don't want the warning. */
+#ifdef NSUV_DISABLE_WUR
+#  define NSUV_WUR
+#else
 /* NSUV_WUR -> NSUV_WARN_UNUSED_RESULT */
 #if defined(_MSC_VER) && (_MSC_VER >= 1700)
 #  define NSUV_WUR _Check_return_
@@ -15,6 +19,7 @@
 #  define NSUV_WUR __attribute__((warn_unused_result))
 #else
 #  define NSUV_WUR /* NOT SUPPORTED */
+#endif
 #endif
 
 #if !defined(DEBUG) && defined(_MSC_VER)
