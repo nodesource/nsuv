@@ -1370,7 +1370,7 @@ ns_mutex::ns_mutex(int* er, bool recursive) : auto_destruct_(true) {
 }
 
 ns_mutex::~ns_mutex() {
-  if (auto_destruct_)
+  if (auto_destruct_ && !destroyed_)
     destroy();
 }
 
