@@ -61,7 +61,7 @@ static void connection_cb(ns_tcp* tcp, int status) {
   ASSERT(status == 0);
 
   ASSERT(0 == uv_tcp_init(tcp->get_loop(), &incoming));
-  ASSERT(0 == uv_accept(tcp->base_stream(), incoming.base_stream()));
+  ASSERT(0 == tcp->accept(&incoming));
   ASSERT(0 == uv_read_start(incoming.base_stream(),
                             conn_alloc_cb,
                             conn_read_cb));

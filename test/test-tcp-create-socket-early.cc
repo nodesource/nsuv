@@ -29,7 +29,7 @@ static void on_connection(ns_tcp* server, int status) {
   r = handle->init_ex(server->get_loop(), AF_INET);
   ASSERT(r == 0);
 
-  r = uv_accept(server->base_stream(), handle->base_stream());
+  r = server->accept(handle);
   ASSERT(r == UV_EBUSY);
 
   server->close();

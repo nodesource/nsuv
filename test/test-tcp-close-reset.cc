@@ -133,7 +133,7 @@ static void connection_cb(ns_tcp* server, int status) {
   ASSERT(status == 0);
 
   ASSERT(0 == tcp_accepted.init(loop));
-  ASSERT(0 == uv_accept(server->base_stream(), tcp_accepted.base_stream()));
+  ASSERT(0 == server->accept(&tcp_accepted));
 
   uv_read_start(tcp_accepted.base_stream(), alloc_cb, read_cb);
 }

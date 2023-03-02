@@ -72,7 +72,7 @@ static void on_connection(ns_tcp* server, int status) {
 
   ASSERT(0 == connection.init(server->get_loop()));
 
-  ASSERT(0 == uv_accept(server->base_stream(), connection.base_stream()));
+  ASSERT(0 == server->accept(&connection));
 
   ASSERT(0 == uv_read_start(connection.base_stream(), on_alloc, on_read1));
 }

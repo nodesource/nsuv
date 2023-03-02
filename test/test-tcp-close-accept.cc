@@ -109,7 +109,7 @@ static void connection_cb(ns_tcp* server, int) {
   /* Accept everyone */
   incoming = &tcp_incoming[got_connections++];
   ASSERT(0 == incoming->init(server->get_loop()));
-  ASSERT(0 == uv_accept(server->base_stream(), incoming->base_stream()));
+  ASSERT(0 == server->accept(incoming));
 
   if (got_connections != ARRAY_SIZE(tcp_incoming))
     return;

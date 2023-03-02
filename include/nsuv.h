@@ -366,6 +366,7 @@ class ns_stream : public ns_handle<UV_T, H_T> {
   NSUV_INLINE NSUV_WUR int listen(int backlog,
                                   void (*cb)(H_T*, int, void*),
                                   std::nullptr_t);
+  NSUV_INLINE NSUV_WUR int accept(H_T* handle);
   NSUV_INLINE NSUV_WUR int write(ns_write<H_T>* req,
                                  const uv_buf_t bufs[],
                                  size_t nbufs,

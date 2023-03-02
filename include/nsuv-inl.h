@@ -679,6 +679,11 @@ int ns_stream<UV_T, H_T>::listen(int backlog,
 }
 
 template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::accept(H_T* handle) {
+  return uv_accept(base_stream(), handle->base_stream());
+}
+
+template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,

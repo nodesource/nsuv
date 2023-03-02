@@ -31,7 +31,7 @@ static void connection_cb(ns_tcp* server, int status) {
   r = tcp_peer.init(server->get_loop());
   ASSERT(r == 0);
 
-  r = uv_accept(server->base_stream(), tcp_peer.base_stream());
+  r = server->accept(&tcp_peer);
   ASSERT(r == 0);
 
   r = uv_read_start(tcp_peer.base_stream(), alloc_cb, read_cb);

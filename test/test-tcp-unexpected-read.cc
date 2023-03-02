@@ -61,7 +61,7 @@ static void connection_cb(ns_tcp* handle, int status) {
   buf = uv_buf_init(ping_cstr, 4);
 
   ASSERT(0 == status);
-  ASSERT(0 == uv_accept(handle->base_stream(), peer_handle.base_stream()));
+  ASSERT(0 == handle->accept(&peer_handle));
   ASSERT(0 == uv_read_start(peer_handle.base_stream(), alloc_cb, read_cb));
   ASSERT(0 == peer_handle.write(&write_req, &buf, 1, write_cb));
 }

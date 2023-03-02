@@ -70,7 +70,7 @@ static void connection_cb(ns_tcp* tcp, int status) {
   ASSERT(status == 0);
 
   ASSERT(0 == incoming.init(tcp->get_loop()));
-  ASSERT(0 == uv_accept(tcp->base_stream(), incoming.base_stream()));
+  ASSERT(0 == tcp->accept(&incoming));
 
   connection_cb_called++;
   ASSERT(0 == uv_read_start(incoming.base_stream(), alloc_cb, read_cb));
