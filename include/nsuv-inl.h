@@ -1036,15 +1036,19 @@ int ns_tcp::getpeername(struct sockaddr* name, int* namelen) {
 
 int ns_tcp::close_reset(ns_close_cb cb) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
-  return uv_tcp_close_reset(uv_handle(), &close_reset_proxy_<decltype(cb)>);
+  return uv_tcp_close_reset(
+      uv_handle(),
+      NSUV_CHECK_NULL(cb, (&close_reset_proxy_<decltype(cb)>)));
 }
 
 template <typename D_T>
 int ns_tcp::close_reset(ns_close_cb_d<D_T> cb, D_T* data) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   close_reset_data_ = data;
-  return uv_tcp_close_reset(uv_handle(),
-                            &close_reset_proxy_<decltype(cb), D_T>);
+
+  return uv_tcp_close_reset(
+      uv_handle(),
+      NSUV_CHECK_NULL(cb, (&close_reset_proxy_<decltype(cb), D_T>)));
 }
 
 int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
