@@ -72,7 +72,7 @@ static void connection_cb(ns_tcp* handle, int status) {
   /* Send some OOB data */
   ASSERT(0 == uv_fileno(reinterpret_cast<uv_handle_t*>(&client_handle), &fd));
 
-  ASSERT(0 == uv_stream_set_blocking(client_handle.base_stream(), 1));
+  ASSERT(0 == client_handle.set_blocking(true));
 
   /* The problem triggers only on a second message, it seem that xnu is not
    * triggering `kevent()` for the first one
@@ -87,7 +87,7 @@ static void connection_cb(ns_tcp* handle, int status) {
   } while (r < 0 && errno == EINTR);
   ASSERT(5 == r);
 
-  ASSERT(0 == uv_stream_set_blocking(client_handle.base_stream(), 0));
+  ASSERT(0 == client_handle.set_blocking(false));
 }
 
 

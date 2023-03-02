@@ -262,8 +262,8 @@ TEST_CASE("tcp_bind_writable_flags", "[tcp]") {
   r = server.listen(128, nullptr);
   ASSERT(r == 0);
 
-  ASSERT(0 == uv_is_writable(server.base_stream()));
-  ASSERT(0 == uv_is_readable(server.base_stream()));
+  ASSERT(0 == server.is_writable());
+  ASSERT(0 == server.is_readable());
 
   buf = uv_buf_init(ping_cstr, 4);
   r = server.write(&write_req, &buf, 1, nullptr);

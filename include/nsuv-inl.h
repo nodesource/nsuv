@@ -650,6 +650,26 @@ uv_stream_t* ns_stream<UV_T, H_T>::base_stream() {
 }
 
 template <class UV_T, class H_T>
+size_t ns_stream<UV_T, H_T>::get_write_queue_size() {
+  return uv_stream_get_write_queue_size(base_stream());
+}
+
+template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::is_readable() {
+  return uv_is_readable(base_stream());
+}
+
+template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::is_writable() {
+  return uv_is_writable(base_stream());
+}
+
+template <class UV_T, class H_T>
+int ns_stream<UV_T, H_T>::set_blocking(bool blocking) {
+  return uv_stream_set_blocking(base_stream(), blocking ? 1 : 0);
+}
+
+template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::listen(int backlog, void (*cb)(H_T*, int)) {
   listen_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 

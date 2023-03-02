@@ -358,6 +358,10 @@ template <class UV_T, class H_T>
 class ns_stream : public ns_handle<UV_T, H_T> {
  public:
   uv_stream_t* base_stream();
+  NSUV_INLINE size_t get_write_queue_size();
+  NSUV_INLINE int is_readable();
+  NSUV_INLINE int is_writable();
+  NSUV_INLINE NSUV_WUR int set_blocking(bool blocking);
   NSUV_INLINE NSUV_WUR int listen(int backlog, void (*cb)(H_T*, int));
   template <typename D_T>
   NSUV_INLINE NSUV_WUR int listen(int backlog,
