@@ -28,7 +28,7 @@ static void on_write(ns_write<ns_tcp>* req, int status) {
   delete req;
 }
 
-static void do_write(ns_tcp* stream, decltype(on_write) cb) {
+static void do_write(ns_tcp* stream, ns_tcp::ns_write_cb cb) {
   ns_write<ns_tcp>* req = new (std::nothrow) ns_write<ns_tcp>();
   char base_cstr[] = "1234578";
   uv_buf_t buf;

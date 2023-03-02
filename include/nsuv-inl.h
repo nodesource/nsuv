@@ -287,7 +287,7 @@ ns_addrinfo::~ns_addrinfo() {
 
 template <typename D_T>
 int ns_addrinfo::get(uv_loop_t* loop,
-                     void (*cb)(ns_addrinfo*, int, D_T*),
+                     ns_addrinfo_cb_d<D_T> cb,
                      const char* node,
                      const char* service,
                      const struct addrinfo* hints,
@@ -307,7 +307,7 @@ int ns_addrinfo::get(uv_loop_t* loop,
 }
 
 int ns_addrinfo::get(uv_loop_t* loop,
-                     void (*cb)(ns_addrinfo*, int),
+                     ns_addrinfo_cb cb,
                      const char* node,
                      const char* service,
                      const struct addrinfo* hints) {
@@ -361,7 +361,7 @@ int ns_random::get(uv_loop_t* loop,
                    void* buf,
                    size_t buflen,
                    uint32_t flags,
-                   random_cb_sig cb) {
+                   ns_random_cb cb) {
   random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_random(loop,
@@ -377,7 +377,7 @@ int ns_random::get(uv_loop_t* loop,
                    void* buf,
                    size_t buflen,
                    uint32_t flags,
-                   random_cb_d_sig<D_T> cb,
+                   ns_random_cb_d<D_T> cb,
                    D_T* data) {
   random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   cb_data_ = data;
@@ -414,8 +414,8 @@ void ns_random::random_proxy_(uv_random_t* req,
 /* ns_work */
 
 int ns_work::queue_work(uv_loop_t* loop,
-                        void (*work_cb)(ns_work*),
-                        void (*after_cb)(ns_work*, int)) {
+                        ns_work_cb work_cb,
+                        ns_after_work_cb after_cb) {
   work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
   after_cb_ptr_ = reinterpret_cast<void (*)()>(after_cb);
 
@@ -428,8 +428,8 @@ int ns_work::queue_work(uv_loop_t* loop,
 
 template <typename D_T>
 int ns_work::queue_work(uv_loop_t* loop,
-                        void (*work_cb)(ns_work*, D_T*),
-                        void (*after_cb)(ns_work*, int, D_T*),
+                        ns_work_cb_d<D_T> work_cb,
+                        ns_after_work_cb_d<D_T> after_cb,
                         D_T* data) {
   work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
   after_cb_ptr_ = reinterpret_cast<void (*)()>(after_cb);
@@ -444,7 +444,7 @@ int ns_work::queue_work(uv_loop_t* loop,
       NSUV_CHECK_NULL(after_cb, (&after_proxy_<decltype(after_cb), D_T>)));
 }
 
-int ns_work::queue_work(uv_loop_t* loop, void (*work_cb)(ns_work*)) {
+int ns_work::queue_work(uv_loop_t* loop, ns_work_cb work_cb) {
   work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
 
   return uv_queue_work(
@@ -456,7 +456,7 @@ int ns_work::queue_work(uv_loop_t* loop, void (*work_cb)(ns_work*)) {
 
 template <typename D_T>
 int ns_work::queue_work(uv_loop_t* loop,
-                        void (*work_cb)(ns_work*, D_T*),
+                        ns_work_cb_d<D_T> work_cb,
                         D_T* data) {
   work_cb_ptr_ = reinterpret_cast<void (*)()>(work_cb);
   cb_data_ = data;
@@ -560,7 +560,7 @@ void ns_handle<UV_T, H_T>::close() {
 }
 
 template <class UV_T, class H_T>
-void ns_handle<UV_T, H_T>::close(void (*cb)(H_T*)) {
+void ns_handle<UV_T, H_T>::close(ns_close_cb cb) {
   close_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   uv_close(base_handle(),
            NSUV_CHECK_NULL(cb, (&close_proxy_<decltype(cb)>)));
@@ -568,7 +568,7 @@ void ns_handle<UV_T, H_T>::close(void (*cb)(H_T*)) {
 
 template <class UV_T, class H_T>
 template <typename D_T>
-void ns_handle<UV_T, H_T>::close(void (*cb)(H_T*, D_T*), D_T* data) {
+void ns_handle<UV_T, H_T>::close(ns_close_cb_d<D_T> cb, D_T* data) {
   close_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   close_cb_data_ = data;
   uv_close(base_handle(),
@@ -670,7 +670,7 @@ int ns_stream<UV_T, H_T>::set_blocking(bool blocking) {
 }
 
 template <class UV_T, class H_T>
-int ns_stream<UV_T, H_T>::listen(int backlog, void (*cb)(H_T*, int)) {
+int ns_stream<UV_T, H_T>::listen(int backlog, ns_listen_cb cb) {
   listen_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_listen(base_stream(),
@@ -681,7 +681,7 @@ int ns_stream<UV_T, H_T>::listen(int backlog, void (*cb)(H_T*, int)) {
 template <class UV_T, class H_T>
 template <typename D_T>
 int ns_stream<UV_T, H_T>::listen(int backlog,
-                                 void (*cb)(H_T*, int, D_T*),
+                                 ns_listen_cb_d<D_T> cb,
                                  D_T* data) {
   listen_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   listen_cb_data_ = data;
@@ -704,8 +704,8 @@ int ns_stream<UV_T, H_T>::accept(H_T* handle) {
 }
 
 template <class UV_T, class H_T>
-int ns_stream<UV_T, H_T>::read_start(alloc_cb_sig alloc_cb,
-                                     read_cb_sig read_cb) {
+int ns_stream<UV_T, H_T>::read_start(ns_alloc_cb alloc_cb,
+                                     ns_read_cb read_cb) {
   alloc_cb_ptr_ = reinterpret_cast<void (*)()>(alloc_cb);
   read_cb_ptr_ = reinterpret_cast<void (*)()>(read_cb);
 
@@ -717,8 +717,8 @@ int ns_stream<UV_T, H_T>::read_start(alloc_cb_sig alloc_cb,
 
 template <class UV_T, class H_T>
 template <typename D_T>
-int ns_stream<UV_T, H_T>::read_start(alloc_cb_d_sig<D_T> alloc_cb,
-                                     read_cb_d_sig<D_T> read_cb,
+int ns_stream<UV_T, H_T>::read_start(ns_alloc_cb_d<D_T> alloc_cb,
+                                     ns_read_cb_d<D_T> read_cb,
                                      D_T* data) {
   alloc_cb_ptr_ = reinterpret_cast<void (*)()>(alloc_cb);
   read_cb_ptr_ = reinterpret_cast<void (*)()>(read_cb);
@@ -739,7 +739,7 @@ template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
-                                void (*cb)(ns_write<H_T>*, int)) {
+                                ns_write_cb cb) {
   int ret = req->init(bufs, nbufs, cb);
   if (ret != NSUV_OK)
     return ret;
@@ -754,7 +754,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 template <class UV_T, class H_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
-                                void (*cb)(ns_write<H_T>*, int)) {
+                                ns_write_cb cb) {
   int ret = req->init(bufs, cb);
   if (ret != NSUV_OK)
     return ret;
@@ -771,7 +771,7 @@ template <typename D_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const uv_buf_t bufs[],
                                 size_t nbufs,
-                                void (*cb)(ns_write<H_T>*, int, D_T*),
+                                ns_write_cb_d<D_T> cb,
                                 D_T* data) {
   int ret = req->init(bufs, nbufs, cb, data);
   if (ret != NSUV_OK)
@@ -797,7 +797,7 @@ template <class UV_T, class H_T>
 template <typename D_T>
 int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
-                                void (*cb)(ns_write<H_T>*, int, D_T*),
+                                ns_write_cb_d<D_T> cb,
                                 D_T* data) {
   int ret = req->init(bufs, cb, data);
   if (ret != NSUV_OK)
@@ -893,7 +893,7 @@ void ns_stream<UV_T, H_T>::write_proxy_(uv_write_t* uv_req, int status) {
 
 /* ns_async */
 
-int ns_async::init(uv_loop_t* loop, void (*cb)(ns_async*)) {
+int ns_async::init(uv_loop_t* loop, ns_async_cb cb) {
   async_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   async_cb_data_ = nullptr;
 
@@ -903,7 +903,7 @@ int ns_async::init(uv_loop_t* loop, void (*cb)(ns_async*)) {
 }
 
 template <typename D_T>
-int ns_async::init(uv_loop_t* loop, void (*cb)(ns_async*, D_T*), D_T* data) {
+int ns_async::init(uv_loop_t* loop, ns_async_cb_d<D_T> cb, D_T* data) {
   async_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   async_cb_data_ = data;
 
@@ -951,7 +951,7 @@ int ns_poll::init_socket(uv_loop_t* loop, uv_os_sock_t socket) {
   return uv_poll_init_socket(loop, uv_handle(), socket);
 }
 
-int ns_poll::start(int events, void (*cb)(ns_poll*, int, int)) {
+int ns_poll::start(int events, ns_poll_cb cb) {
   poll_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_poll_start(uv_handle(),
@@ -961,7 +961,7 @@ int ns_poll::start(int events, void (*cb)(ns_poll*, int, int)) {
 
 template <typename D_T>
 int ns_poll::start(int events,
-                   void (*cb)(ns_poll*, int, int, D_T*),
+                   ns_poll_cb_d<D_T> cb,
                    D_T* data) {
   poll_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   poll_cb_data_ = data;
@@ -1034,13 +1034,13 @@ int ns_tcp::getpeername(struct sockaddr* name, int* namelen) {
   return uv_tcp_getpeername(uv_handle(), name, namelen);
 }
 
-int ns_tcp::close_reset(void (*cb)(ns_tcp*)) {
+int ns_tcp::close_reset(ns_close_cb cb) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   return uv_tcp_close_reset(uv_handle(), &close_reset_proxy_<decltype(cb)>);
 }
 
 template <typename D_T>
-int ns_tcp::close_reset(void (*cb)(ns_tcp*, D_T*), D_T* data) {
+int ns_tcp::close_reset(ns_close_cb_d<D_T> cb, D_T* data) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   close_reset_data_ = data;
   return uv_tcp_close_reset(uv_handle(),
@@ -1053,7 +1053,7 @@ int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
 
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
-                    void (*cb)(ns_connect<ns_tcp>*, int)) {
+                    ns_connect_cb cb) {
   int ret = req->init(addr, cb);
   if (ret != NSUV_OK)
     return ret;
@@ -1068,7 +1068,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
 template <typename D_T>
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
-                    void (*cb)(ns_connect<ns_tcp>*, int, D_T*),
+                    ns_connect_cb_d<D_T> cb,
                     D_T* data) {
   int ret = req->init(addr, cb, data);
   if (ret != NSUV_OK)
@@ -1125,7 +1125,7 @@ int ns_timer::init(uv_loop_t* loop) {
   return uv_timer_init(loop, uv_handle());
 }
 
-int ns_timer::start(void (*cb)(ns_timer*), uint64_t timeout, uint64_t repeat) {
+int ns_timer::start(ns_timer_cb cb, uint64_t timeout, uint64_t repeat) {
   timer_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_timer_start(uv_handle(),
@@ -1135,7 +1135,7 @@ int ns_timer::start(void (*cb)(ns_timer*), uint64_t timeout, uint64_t repeat) {
 }
 
 template <typename D_T>
-int ns_timer::start(void (*cb)(ns_timer*, D_T*),
+int ns_timer::start(ns_timer_cb_d<D_T> cb,
                     uint64_t timeout,
                     uint64_t repeat,
                     D_T* data) {
@@ -1187,7 +1187,7 @@ void ns_timer::timer_proxy_(uv_timer_t* handle) {
     return uv_##name##_init(loop, uv_handle());                                \
   }                                                                            \
                                                                                \
-  int ns_##name::start(void (*cb)(ns_##name*)) {                               \
+  int ns_##name::start(ns_##name##_cb cb) {                                    \
     if (is_active())                                                           \
       return 0;                                                                \
     name##_cb_ptr_ = reinterpret_cast<void (*)()>(cb);                         \
@@ -1197,7 +1197,7 @@ void ns_timer::timer_proxy_(uv_timer_t* handle) {
   }                                                                            \
                                                                                \
   template <typename D_T>                                                      \
-  int ns_##name::start(void (*cb)(ns_##name*, D_T*), D_T* data) {              \
+  int ns_##name::start(ns_##name##_cb_d<D_T> cb, D_T* data) {                  \
     if (is_active())                                                           \
       return 0;                                                                \
     name##_cb_ptr_ = reinterpret_cast<void (*)()>(cb);                         \
@@ -1341,7 +1341,7 @@ int ns_udp::send(ns_udp_send* req,
                  const uv_buf_t bufs[],
                  size_t nbufs,
                  const struct sockaddr* addr,
-                 void (*cb)(ns_udp_send*, int)) {
+                 ns_udp_send_cb cb) {
   int r = req->init(bufs, nbufs, addr, cb);
   if (r != 0)
     return r;
@@ -1357,7 +1357,7 @@ int ns_udp::send(ns_udp_send* req,
 int ns_udp::send(ns_udp_send* req,
                  const std::vector<uv_buf_t>& bufs,
                  const struct sockaddr* addr,
-                 void (*cb)(ns_udp_send*, int)) {
+                 ns_udp_send_cb cb) {
   int r = req->init(bufs, addr, cb);
   if (r != 0)
     return r;
@@ -1375,7 +1375,7 @@ int ns_udp::send(ns_udp_send* req,
                  const uv_buf_t bufs[],
                  size_t nbufs,
                  const struct sockaddr* addr,
-                 void (*cb)(ns_udp_send*, int, D_T*),
+                 ns_udp_send_cb_d<D_T> cb,
                  D_T* data) {
   int r = req->init(bufs, nbufs, addr, cb, data);
   if (r != 0)
@@ -1402,7 +1402,7 @@ template <typename D_T>
 int ns_udp::send(ns_udp_send* req,
                  const std::vector<uv_buf_t>& bufs,
                  const struct sockaddr* addr,
-                 void (*cb)(ns_udp_send*, int, D_T*),
+                 ns_udp_send_cb_d<D_T> cb,
                  D_T* data) {
   int r = req->init(bufs, addr, cb, data);
   if (r != 0)
@@ -1603,7 +1603,7 @@ ns_rwlock::scoped_wrlock::~scoped_wrlock() {
 
 /* ns_thread */
 
-int ns_thread::create(void (*cb)(ns_thread*)) {
+int ns_thread::create(ns_thread_cb cb) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_thread_create(&thread_,
@@ -1612,7 +1612,7 @@ int ns_thread::create(void (*cb)(ns_thread*)) {
 }
 
 template <typename D_T>
-int ns_thread::create(void (*cb)(ns_thread*, D_T*), D_T* data) {
+int ns_thread::create(ns_thread_cb_d<D_T> cb, D_T* data) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   thread_cb_data_ = data;
 
@@ -1627,7 +1627,7 @@ int ns_thread::create(void (*cb)(ns_thread*, void*), std::nullptr_t) {
 }
 
 int ns_thread::create_ex(const uv_thread_options_t* params,
-                         void (*cb)(ns_thread*)) {
+                         ns_thread_cb cb) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_thread_create_ex(
@@ -1639,7 +1639,7 @@ int ns_thread::create_ex(const uv_thread_options_t* params,
 
 template <typename D_T>
 int ns_thread::create_ex(const uv_thread_options_t* params,
-                         void (*cb)(ns_thread*, D_T*),
+                         ns_thread_cb_d<D_T> cb,
                          D_T* data) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   thread_cb_data_ = data;
