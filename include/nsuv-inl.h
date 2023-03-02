@@ -18,6 +18,8 @@ namespace nsuv {
 
 #define NSUV_CHECK_NULL(v, r) ((v) == nullptr ? nullptr : (r))
 
+#define NSUV_OK 0
+
 using util::addr_size;
 
 /* ns_base_req */
@@ -129,7 +131,7 @@ int ns_connect<H_T>::init(const struct sockaddr* addr, CB cb, D_T* data) {
   ns_req<uv_connect_t, ns_connect<H_T>, H_T>::init(cb, data);
   std::memcpy(&addr_, addr, len);
 
-  return 0;
+  return NSUV_OK;
 }
 
 template <class H_T>
@@ -155,7 +157,7 @@ int ns_write<H_T>::init(
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
-  return 0;
+  return NSUV_OK;
 }
 
 template <class H_T>
@@ -171,7 +173,7 @@ int ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
     return UV_ENOMEM;
   }
   bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
-  return 0;
+  return NSUV_OK;
 }
 
 template <class H_T>
@@ -181,7 +183,7 @@ int ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
                         D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   bufs_ = std::move(bufs);
-  return 0;
+  return NSUV_OK;
 }
 
 template <class H_T>
@@ -236,7 +238,7 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
     std::memcpy(addr_.get(), addr, len);
   }
 
-  return 0;
+  return NSUV_OK;
 }
 
 template <typename CB, typename D_T>
@@ -258,7 +260,7 @@ int ns_udp_send::init(std::vector<uv_buf_t>&& bufs,
     std::memcpy(addr_.get(), addr, len);
   }
 
-  return 0;
+  return NSUV_OK;
 }
 
 std::vector<uv_buf_t>& ns_udp_send::bufs() {
@@ -682,7 +684,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 size_t nbufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
   int ret = req->init(bufs, nbufs, cb);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_write(req->uv_req(),
@@ -697,7 +699,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 const std::vector<uv_buf_t>& bufs,
                                 void (*cb)(ns_write<H_T>*, int)) {
   int ret = req->init(bufs, cb);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_write(req->uv_req(),
@@ -715,7 +717,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
   int ret = req->init(bufs, nbufs, cb, data);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_write(req->uv_req(),
@@ -741,7 +743,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                                 void (*cb)(ns_write<H_T>*, int, D_T*),
                                 D_T* data) {
   int ret = req->init(bufs, cb, data);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_write(req->uv_req(),
@@ -956,7 +958,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     const struct sockaddr* addr,
                     void (*cb)(ns_connect<ns_tcp>*, int)) {
   int ret = req->init(addr, cb);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_tcp_connect(
@@ -972,7 +974,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
                     void (*cb)(ns_connect<ns_tcp>*, int, D_T*),
                     D_T* data) {
   int ret = req->init(addr, cb, data);
-  if (ret != 0)
+  if (ret != NSUV_OK)
     return ret;
 
   return uv_tcp_connect(
