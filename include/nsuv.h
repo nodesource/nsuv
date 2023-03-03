@@ -243,9 +243,6 @@ class ns_addrinfo : public ns_base_req<uv_getaddrinfo_t, ns_addrinfo> {
 
  private:
   NSUV_PROXY_FNS(addrinfo_proxy_, uv_getaddrinfo_t*, int, struct addrinfo*)
-
-  void (*addrinfo_cb_ptr_)() = nullptr;
-  void* addrinfo_cb_data_ = nullptr;
 };
 
 
@@ -354,9 +351,6 @@ class ns_random : public ns_base_req<uv_random_t, ns_random> {
                  int status,
                  void* buf,
                  size_t buflen);
-
-  void (*random_cb_ptr_)() = nullptr;
-  void* cb_data_ = nullptr;
 };
 
 

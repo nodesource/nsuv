@@ -294,8 +294,6 @@ int ns_addrinfo::get(uv_loop_t* loop,
                      D_T* data) {
   ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb, data);
   free();
-  addrinfo_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
-  addrinfo_cb_data_ = data;
 
   return uv_getaddrinfo(
       loop,
@@ -313,7 +311,6 @@ int ns_addrinfo::get(uv_loop_t* loop,
                      const struct addrinfo* hints) {
   ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb);
   free();
-  addrinfo_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_getaddrinfo(loop,
                         uv_req(),
@@ -337,7 +334,7 @@ void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo*) {
   auto* ai_req = ns_addrinfo::cast(req);
-  auto* cb_ = reinterpret_cast<CB_T>(ai_req->addrinfo_cb_ptr_);
+  auto* cb_ = reinterpret_cast<CB_T>(ai_req->req_cb_);
   cb_(ai_req, status);
 }
 
@@ -346,8 +343,8 @@ void ns_addrinfo::addrinfo_proxy_(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo*) {
   auto* ai_req = ns_addrinfo::cast(req);
-  auto* cb_ = reinterpret_cast<CB_T>(ai_req->addrinfo_cb_ptr_);
-  cb_(ai_req, status, static_cast<D_T*>(ai_req->addrinfo_cb_data_));
+  auto* cb_ = reinterpret_cast<CB_T>(ai_req->req_cb_);
+  cb_(ai_req, status, static_cast<D_T*>(ai_req->req_cb_data_));
 }
 
 
@@ -494,7 +491,7 @@ int ns_random::get(uv_loop_t* loop,
                    size_t buflen,
                    uint32_t flags,
                    ns_random_cb cb) {
-  random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+  ns_base_req<uv_random_t, ns_random>::init(cb);
 
   return uv_random(loop,
                    this,
@@ -511,8 +508,7 @@ int ns_random::get(uv_loop_t* loop,
                    uint32_t flags,
                    ns_random_cb_d<D_T> cb,
                    D_T* data) {
-  random_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
-  cb_data_ = data;
+  ns_base_req<uv_random_t, ns_random>::init(cb, data);
 
   return uv_random(loop,
                    this,
@@ -528,7 +524,7 @@ void ns_random::random_proxy_(uv_random_t* req,
                               void* buf,
                               size_t buflen) {
   auto* r_req = ns_random::cast(req);
-  auto* cb = reinterpret_cast<CB_T>(r_req->random_cb_ptr_);
+  auto* cb = reinterpret_cast<CB_T>(r_req->req_cb_);
   cb(r_req, status, buf, buflen);
 }
 
@@ -538,8 +534,8 @@ void ns_random::random_proxy_(uv_random_t* req,
                               void* buf,
                               size_t buflen) {
   auto* r_req = ns_random::cast(req);
-  auto* cb = reinterpret_cast<CB_T>(r_req->random_cb_ptr_);
-  cb(r_req, status, buf, buflen, static_cast<D_T*>(r_req->cb_data_));
+  auto* cb = reinterpret_cast<CB_T>(r_req->req_cb_);
+  cb(r_req, status, buf, buflen, static_cast<D_T*>(r_req->req_cb_data_));
 }
 
 
