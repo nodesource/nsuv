@@ -267,6 +267,8 @@ class ns_fs : public ns_base_req<uv_fs_t, ns_fs> {
   // TODO(trevnorris): Automate this in the destructor?
   NSUV_INLINE void cleanup();
 
+  NSUV_INLINE NSUV_WUR int scandir_next(uv_dirent_t* ent);
+
   NSUV_FS_FN(close, uv_file file)
   NSUV_FS_FN(open, const char* path, int flags, int mode)
   NSUV_FS_FN(read,

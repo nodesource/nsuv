@@ -378,6 +378,10 @@ void ns_fs::cleanup() {
   return uv_fs_req_cleanup(this);
 }
 
+int ns_fs::scandir_next(uv_dirent_t* ent) {
+  return uv_fs_scandir_next(this, ent);
+}
+
 #define NSUV_ARGS(...) __VA_ARGS__
 #define NSUV_STRIP(X) X
 #define NSUV_PASS(X) NSUV_STRIP(NSUV_ARGS X)
