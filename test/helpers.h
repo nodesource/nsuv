@@ -145,9 +145,9 @@ static void close_loop(uv_loop_t* loop) {
   uv_run(loop, UV_RUN_DEFAULT);
 }
 
-UNUSED static void make_valgrind_happy() {
-  close_loop(uv_default_loop());
-  REQUIRE(0 == uv_loop_close(uv_default_loop()));
+UNUSED static void make_valgrind_happy(uv_loop_t* loop = uv_default_loop()) {
+  close_loop(loop);
+  REQUIRE(0 == uv_loop_close(loop));
 }
 
 UNUSED static int can_ipv6(void) {

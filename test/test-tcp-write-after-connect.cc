@@ -45,7 +45,7 @@ TEST_CASE("tcp_write_after_connect", "[tcp]") {
 
   uv_run(&loop, UV_RUN_DEFAULT);
 
-  make_valgrind_happy();
+  make_valgrind_happy(&loop);
 }
 
 #endif /* !_WIN32 */

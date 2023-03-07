@@ -47,7 +47,7 @@ static void done_cb(ns_work* req, int) {
 
 static void saturate_threadpool(void) {
   uv_loop_t* loop;
-  char buf[64];
+  static char buf[64];
   size_t i;
 
   snprintf(buf,
