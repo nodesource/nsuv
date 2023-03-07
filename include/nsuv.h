@@ -274,11 +274,19 @@ class ns_fs : public ns_base_req<uv_fs_t, ns_fs> {
              const uv_buf_t bufs[],
              unsigned int nbufs,
              int64_t offset)
+  NSUV_FS_FN(read,
+             uv_file file,
+             const std::vector<uv_buf_t>& bufs,
+             int64_t offset)
   NSUV_FS_FN(unlink, const char* path)
   NSUV_FS_FN(write,
              uv_file file,
              const uv_buf_t bufs[],
              unsigned int nbufs,
+             int64_t offset)
+  NSUV_FS_FN(write,
+             uv_file file,
+             const std::vector<uv_buf_t>& bufs,
              int64_t offset)
   NSUV_FS_FN(copyfile, const char* path, const char* new_path, int flags)
   NSUV_FS_FN(mkdir, const char* path, int mode)
