@@ -46,7 +46,6 @@ static void connection_cb(ns_tcp* server, int) {
 
 static void connect_cb(ns_connect<ns_tcp>* req, int, char* data) {
   static char bye_ctr[] = "BYE";
-  // Create a std::vector of uv_buf_t to be written.
   uv_buf_t buf1 = uv_buf_init(data, strlen(data));
   uv_buf_t buf2 = uv_buf_init(bye_ctr, strlen(bye_ctr));
   // Write to the handle attached to this request and pass along data.
