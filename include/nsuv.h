@@ -455,7 +455,7 @@ class ns_stream : public ns_handle<UV_T, H_T> {
   NSUV_CB_FNS(ns_read_cb, H_T*, ssize_t, const uv_buf_t*)
   NSUV_CB_FNS(ns_write_cb, ns_write<H_T>*, int)
 
-  uv_stream_t* base_stream();
+  NSUV_INLINE uv_stream_t* base_stream();
   NSUV_INLINE size_t get_write_queue_size();
   NSUV_INLINE int is_readable();
   NSUV_INLINE int is_writable();
