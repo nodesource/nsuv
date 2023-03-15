@@ -1861,8 +1861,10 @@ int util::addr_size(const struct sockaddr* addr) {
     len = sizeof(struct sockaddr_in);
   } else if (addr->sa_family == AF_INET6) {
     len = sizeof(struct sockaddr_in6);
+#if defined(AF_UNIX) && !defined(_WIN32)
   } else if (addr->sa_family == AF_UNIX) {
     len = sizeof(struct sockaddr_un);
+#endif
   } else {
     return UV_EINVAL;
   }
