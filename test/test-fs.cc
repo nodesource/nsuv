@@ -9,6 +9,15 @@
 
 #ifndef _WIN32
 # include <unistd.h> /* unlink, rmdir, etc. */
+# define w_unlink unlink
+# define w_rmdir rmdir
+# define w_open open
+# define w_write write
+# define w_close close
+# define w_stricmp stricmp
+# define w_strnicmp strnicmp
+# define w_lseek lseek
+# define w_stat stat
 #else
 # include <winioctl.h>
 # include <direct.h>
@@ -16,16 +25,22 @@
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
 # endif
-# define unlink _unlink
-# define rmdir _rmdir
-# define open _open
-# define write _write
-# define close _close
-# ifndef stat
-#  define stat _stati64
+# define w_unlink _unlink
+# define w_rmdir _rmdir
+# define w_open _open
+# define w_write _write
+# define w_close _close
+# define w_stricmp _stricmp
+# define w_strnicmp _strnicmp
+# define w_lseek _lseek
+# define w_stat _stati64
+# define stricmp _stricmp
+# define strnicmp _strnicmp
+# ifndef S_IWUSR
+#   define S_IWUSR 0200
 # endif
-# ifndef lseek
-#   define lseek _lseek
+# ifndef S_IRUSR
+#   define S_IRUSR 0400
 # endif
 #endif
 
@@ -274,7 +289,7 @@ TEST_CASE("fs_file_loop", "[fs]") {
   loop = uv_default_loop();
   open_cb_count = 0;
 
-  unlink("test_symlink");
+  w_unlink("test_symlink");
   r = req.symlink("test_symlink", "test_symlink", 0);
 #ifdef _WIN32
   /*
@@ -304,7 +319,7 @@ TEST_CASE("fs_file_loop", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(open_cb_count == 1);
 
-  unlink("test_symlink");
+  w_unlink("test_symlink");
 
   make_valgrind_happy();
 }
@@ -494,8 +509,8 @@ TEST_CASE("fs_file_async", "[fs]") {
   int r;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   loop = uv_default_loop();
   create_cb_count = 0;
@@ -555,8 +570,8 @@ TEST_CASE("fs_file_async", "[fs]") {
   ASSERT(ftruncate_cb_count == 1);
 
   /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   make_valgrind_happy();
 }
@@ -574,8 +589,8 @@ static void fs_file_sync(int add_flags) {
   int r;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   r = open_req1.open(
       "test_file", O_WRONLY | O_CREAT | add_flags, S_IWUSR | S_IRUSR);
@@ -643,8 +658,8 @@ static void fs_file_sync(int add_flags) {
   unlink_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 }
 
 TEST_CASE("fs_file_sync", "[fs]") {
@@ -662,7 +677,7 @@ static void fs_file_write_null_buffer(int add_flags) {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req1.open(
       "test_file", O_WRONLY | O_CREAT | add_flags, S_IWUSR | S_IRUSR);
@@ -681,7 +696,7 @@ static void fs_file_write_null_buffer(int add_flags) {
   ASSERT(close_req.result == 0);
   close_req.cleanup();
 
-  unlink("test_file");
+  w_unlink("test_file");
 }
 
 TEST_CASE("fs_file_write_null_buffer", "[fs]") {
@@ -740,9 +755,9 @@ TEST_CASE("fs_async_dir", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup */
-  unlink("test_dir/file1");
-  unlink("test_dir/file2");
-  rmdir("test_dir");
+  w_unlink("test_dir/file1");
+  w_unlink("test_dir/file2");
+  w_rmdir("test_dir");
 
   loop = uv_default_loop();
   mkdir_cb_count = 0;
@@ -823,9 +838,9 @@ TEST_CASE("fs_async_dir", "[fs]") {
   ASSERT(rmdir_cb_count == 1);
 
   /* Cleanup */
-  unlink("test_dir/file1");
-  unlink("test_dir/file2");
-  rmdir("test_dir");
+  w_unlink("test_dir/file1");
+  w_unlink("test_dir/file2");
+  w_rmdir("test_dir");
 
   make_valgrind_happy();
 }
@@ -849,7 +864,11 @@ static void test_sendfile(void (*setup)(int),
                           ns_fs::ns_fs_cb cb,
                           off_t expected_size) {
   int f, r;
+#ifndef _WIN32
   struct stat s1, s2;
+#else
+  struct _stat64 s1, s2;
+#endif
   ns_fs close_req;
   ns_fs open_req1;
   ns_fs open_req2;
@@ -862,16 +881,16 @@ static void test_sendfile(void (*setup)(int),
   sendfile_cb_count = 0;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
-  f = open("test_file", O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR);
+  f = w_open("test_file", O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(f != -1);
 
   if (setup != nullptr)
     setup(f);
 
-  r = close(f);
+  r = w_close(f);
   ASSERT(r == 0);
 
   /* Test starts here. */
@@ -901,8 +920,8 @@ static void test_sendfile(void (*setup)(int),
 
   memset(&s1, 0, sizeof(s1));
   memset(&s2, 0, sizeof(s2));
-  ASSERT(0 == stat("test_file", &s1));
-  ASSERT(0 == stat("test_file2", &s2));
+  ASSERT(0 == w_stat("test_file", &s1));
+  ASSERT(0 == w_stat("test_file2", &s2));
   ASSERT(s2.st_size == expected_size);
 
   if (expected_size > 0) {
@@ -924,16 +943,16 @@ static void test_sendfile(void (*setup)(int),
   }
 
   /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   make_valgrind_happy();
 }
 
 static void sendfile_setup(int f) {
-  ASSERT(6 == write(f, "begin\n", 6));
-  ASSERT(65542 == lseek(f, 65536, SEEK_CUR));
-  ASSERT(4 == write(f, "end\n", 4));
+  ASSERT(6 == w_write(f, "begin\n", 6));
+  ASSERT(65542 == w_lseek(f, 65536, SEEK_CUR));
+  ASSERT(4 == w_write(f, "end\n", 4));
 }
 
 TEST_CASE("fs_async_sendfile", "[fs]") {
@@ -995,8 +1014,8 @@ TEST_CASE("fs_mkdtemp", "[fs]") {
   // ASSERT(strcmp(mkdtemp_req1.path, mkdtemp_req2.path) != 0);
 
   /* Cleanup */
-  rmdir(mkdtemp_req1.path);
-  rmdir(mkdtemp_req2.path);
+  w_rmdir(mkdtemp_req1.path);
+  w_rmdir(mkdtemp_req2.path);
   mkdtemp_req1.cleanup();
   mkdtemp_req2.cleanup();
 
@@ -1092,8 +1111,8 @@ TEST_CASE("fs_mkstemp", "[fs]") {
   r = req.close(fd);
   req.cleanup();
 
-  unlink(mkstemp_req1.path);
-  unlink(mkstemp_req2.path);
+  w_unlink(mkstemp_req1.path);
+  w_unlink(mkstemp_req2.path);
   mkstemp_req1.cleanup();
   mkstemp_req2.cleanup();
 
@@ -1128,7 +1147,7 @@ TEST_CASE("fs_fstat", "[fs]") {
 #endif
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   loop = uv_default_loop();
   fstat_cb_count = 0;
@@ -1268,7 +1287,7 @@ TEST_CASE("fs_fstat", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
@@ -1325,8 +1344,8 @@ TEST_CASE("fs_access", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup. */
-  unlink("test_file");
-  rmdir("test_dir");
+  w_unlink("test_file");
+  w_rmdir("test_dir");
 
   loop = uv_default_loop();
   access_cb_count = 0;
@@ -1387,8 +1406,8 @@ TEST_CASE("fs_access", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
-  rmdir("test_dir");
+  w_unlink("test_file");
+  w_rmdir("test_dir");
 
   make_valgrind_happy();
 }
@@ -1417,7 +1436,7 @@ TEST_CASE("fs_chmod", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   loop = uv_default_loop();
   chmod_cb_count = 0;
@@ -1503,7 +1522,7 @@ TEST_CASE("fs_chmod", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
@@ -1516,7 +1535,7 @@ TEST_CASE("fs_unlink_readonly", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   loop = uv_default_loop();
 
@@ -1557,7 +1576,7 @@ TEST_CASE("fs_unlink_readonly", "[fs]") {
   /* Cleanup. */
   r = req.chmod("test_file", 0600);
   req.cleanup();
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
@@ -1620,8 +1639,8 @@ TEST_CASE("fs_chown", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file_link");
+  w_unlink("test_file");
+  w_unlink("test_file_link");
 
   loop = uv_default_loop();
   chown_cb_count = 0;
@@ -1701,8 +1720,8 @@ TEST_CASE("fs_chown", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file_link");
+  w_unlink("test_file");
+  w_unlink("test_file_link");
 
   make_valgrind_happy();
 }
@@ -1723,9 +1742,9 @@ TEST_CASE("fs_link", "[fs]") {
   uv_loop_t* loop;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file_link");
-  unlink("test_file_link2");
+  w_unlink("test_file");
+  w_unlink("test_file_link");
+  w_unlink("test_file_link2");
 
   loop = uv_default_loop();
   link_cb_count = 0;
@@ -1760,7 +1779,7 @@ TEST_CASE("fs_link", "[fs]") {
   ASSERT(r >= 0);
   ASSERT(req.result >= 0);
 
-  close(link);
+  w_close(link);
 
   /* async link */
   r = req.link(loop, "test_file", "test_file_link2", link_cb);
@@ -1789,9 +1808,9 @@ TEST_CASE("fs_link", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file_link");
-  unlink("test_file_link2");
+  w_unlink("test_file");
+  w_unlink("test_file_link");
+  w_unlink("test_file_link2");
 
   make_valgrind_happy();
 }
@@ -1849,7 +1868,7 @@ TEST_CASE("fs_readlink", "[fs]") {
     req.cleanup();
 
     /* Cleanup */
-    unlink("test_file");
+    w_unlink("test_file");
   }
 
   make_valgrind_happy();
@@ -1923,11 +1942,11 @@ TEST_CASE("fs_symlink", "[fs]") {
   symlink_cb_count = 0;
   readlink_cb_count = 0;
   realpath_cb_count = 0;
-  unlink("test_file");
-  unlink("test_file_symlink");
-  unlink("test_file_symlink2");
-  unlink("test_file_symlink_symlink");
-  unlink("test_file_symlink2_symlink");
+  w_unlink("test_file");
+  w_unlink("test_file_symlink");
+  w_unlink("test_file_symlink2");
+  w_unlink("test_file_symlink_symlink");
+  w_unlink("test_file_symlink2_symlink");
   test_file_abs_size = sizeof(test_file_abs_buf);
 #ifdef _WIN32
   uv_cwd(test_file_abs_buf, &test_file_abs_size);
@@ -2006,7 +2025,7 @@ TEST_CASE("fs_symlink", "[fs]") {
   r = req.realpath("test_file_symlink_symlink");
   ASSERT(r == 0);
 #ifdef _WIN32
-  ASSERT(stricmp(req.ptr, test_file_abs_buf) == 0);
+  ASSERT(w_stricmp(static_cast<char*>(req.ptr), test_file_abs_buf) == 0);
 #else
   // ASSERT(strcmp(req.ptr, test_file_abs_buf) == 0);
 #endif
@@ -2053,11 +2072,11 @@ TEST_CASE("fs_symlink", "[fs]") {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
-  unlink("test_file");
-  unlink("test_file_symlink");
-  unlink("test_file_symlink_symlink");
-  unlink("test_file_symlink2");
-  unlink("test_file_symlink2_symlink");
+  w_unlink("test_file");
+  w_unlink("test_file_symlink");
+  w_unlink("test_file_symlink_symlink");
+  w_unlink("test_file_symlink2");
+  w_unlink("test_file_symlink2_symlink");
 
   make_valgrind_happy();
 }
@@ -2075,10 +2094,10 @@ static void test_symlink_dir_impl(int type) {
   size_t test_dir_abs_size;
 
   /* set-up */
-  unlink("test_dir/file1");
-  unlink("test_dir/file2");
-  rmdir("test_dir");
-  rmdir("test_dir_symlink");
+  w_unlink("test_dir/file1");
+  w_unlink("test_dir/file2");
+  w_rmdir("test_dir");
+  w_rmdir("test_dir_symlink");
   test_dir_abs_size = sizeof(test_dir_abs_buf);
 
   r = req.mkdir("test_dir", 0777);
@@ -2196,10 +2215,10 @@ static void test_symlink_dir_impl(int type) {
   ASSERT(!scandir_req.ptr);
 
   /* clean-up */
-  unlink("test_dir/file1");
-  unlink("test_dir/file2");
-  rmdir("test_dir");
-  rmdir("test_dir_symlink");
+  w_unlink("test_dir/file1");
+  w_unlink("test_dir/file2");
+  w_rmdir("test_dir");
+  w_rmdir("test_dir_symlink");
 
   make_valgrind_happy();
 }
@@ -2238,7 +2257,7 @@ TEST_CASE("fs_utime", "[fs]") {
   /* Setup. */
   loop = uv_default_loop();
   utime_cb_count = 0;
-  unlink(path);
+  w_unlink(path);
   r = req.open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
   ASSERT(req.result >= 0);
@@ -2267,7 +2286,7 @@ TEST_CASE("fs_utime", "[fs]") {
   ASSERT(utime_cb_count == 1);
 
   /* Cleanup. */
-  unlink(path);
+  w_unlink(path);
 
   make_valgrind_happy();
 }
@@ -2280,7 +2299,7 @@ TEST_CASE("fs_utime_round", "[fs]") {
   ns_fs req;
   int r;
 
-  unlink(path);
+  w_unlink(path);
   r = req.open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT_GE(r, 0);
   ASSERT_GE(req.result, 0);
@@ -2304,7 +2323,7 @@ TEST_CASE("fs_utime_round", "[fs]") {
   ASSERT_EQ(0, req.result);
   req.cleanup();
   check_utime(path, atime, mtime, /* test_lutime */ 0);
-  unlink(path);
+  w_unlink(path);
 
   make_valgrind_happy();
 }
@@ -2339,7 +2358,7 @@ TEST_CASE("fs_futime", "[fs]") {
   /* Setup. */
   loop = uv_default_loop();
   futime_cb_count = 0;
-  unlink(path);
+  w_unlink(path);
   r = req.open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
   ASSERT(req.result >= 0);
@@ -2381,7 +2400,7 @@ TEST_CASE("fs_futime", "[fs]") {
   ASSERT(futime_cb_count == 1);
 
   /* Cleanup. */
-  unlink(path);
+  w_unlink(path);
   futime_req.cleanup();
 
   make_valgrind_happy();
@@ -2414,7 +2433,7 @@ TEST_CASE("fs_lutime", "[fs]") {
   /* Setup */
   loop = uv_default_loop();
   lutime_cb_count = 0;
-  unlink(path);
+  w_unlink(path);
   r = req.open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT_GE(r, 0);
   ASSERT_GE(req.result, 0);
@@ -2422,7 +2441,7 @@ TEST_CASE("fs_lutime", "[fs]") {
   r = req.close(r);
   ASSERT_EQ(r, 0);
 
-  unlink(symlink_path);
+  w_unlink(symlink_path);
   s = req.symlink(path, symlink_path, 0);
 #ifdef _WIN32
   if (s == UV_EPERM) {
@@ -2469,8 +2488,8 @@ TEST_CASE("fs_lutime", "[fs]") {
   ASSERT_EQ(lutime_cb_count, 2);
 
   /* Cleanup. */
-  unlink(path);
-  unlink(symlink_path);
+  w_unlink(path);
+  w_unlink(symlink_path);
 
   make_valgrind_happy();
 }
@@ -2692,7 +2711,7 @@ static void fs_file_open_append(int add_flags) {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file",
                     O_WRONLY | O_CREAT | add_flags,
@@ -2748,7 +2767,7 @@ static void fs_file_open_append(int add_flags) {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
 }
 
 TEST_CASE("fs_file_open_append", "[fs]") {
@@ -2769,8 +2788,8 @@ TEST_CASE("fs_rename_to_existing_file", "[fs]") {
   int r;
 
   /* Setup. */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   r = open_req.open("test_file", O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
@@ -2821,8 +2840,8 @@ TEST_CASE("fs_rename_to_existing_file", "[fs]") {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
-  unlink("test_file2");
+  w_unlink("test_file");
+  w_unlink("test_file2");
 
   make_valgrind_happy();
 }
@@ -2891,7 +2910,7 @@ static void fs_read_file_eof(int add_flags) {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file",
                     O_WRONLY | O_CREAT | add_flags,
@@ -2935,7 +2954,7 @@ static void fs_read_file_eof(int add_flags) {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
 }
 
 TEST_CASE("fs_read_file_eof", "[fs]") {
@@ -2956,7 +2975,7 @@ static void fs_write_multiple_bufs(int add_flags) {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file",
                     O_WRONLY | O_CREAT | add_flags,
@@ -2987,7 +3006,7 @@ static void fs_write_multiple_bufs(int add_flags) {
   /* Read the strings back to separate buffers. */
   iovs[0] = uv_buf_init(buf, sizeof(test_buf));
   iovs[1] = uv_buf_init(buf2, sizeof(test_buf2));
-  ASSERT(lseek(open_req.result, 0, SEEK_CUR) == 0);
+  ASSERT(w_lseek(open_req.result, 0, SEEK_CUR) == 0);
   r = read_req.read(open_req.result, iovs, 2, -1);
   ASSERT(r >= 0);
   ASSERT(read_req.result == sizeof(test_buf) + sizeof(test_buf2));
@@ -3028,7 +3047,7 @@ static void fs_write_multiple_bufs(int add_flags) {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
 }
 
 TEST_CASE("fs_write_multiple_bufs", "[fs]") {
@@ -3055,7 +3074,7 @@ static void fs_write_alotof_bufs(int add_flags) {
   iovcount = 54321;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   iovs = new (std::nothrow) uv_buf_t[iovcount]();
   ASSERT_NOT_NULL(iovs);
@@ -3107,7 +3126,7 @@ static void fs_write_alotof_bufs(int add_flags) {
   read_req.cleanup();
   delete[] buffer;
 
-  ASSERT(lseek(open_req.result, write_req.result, SEEK_SET) ==
+  ASSERT(w_lseek(open_req.result, write_req.result, SEEK_SET) ==
          write_req.result);
   iov = uv_buf_init(buf, sizeof(buf));
   r = read_req.read(open_req.result, &iov, 1, -1);
@@ -3121,7 +3140,7 @@ static void fs_write_alotof_bufs(int add_flags) {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
   delete[] iovs;
 }
 
@@ -3153,7 +3172,7 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
   iovcount = 54321;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   iovs = new (std::nothrow) uv_buf_t[iovcount]();
   ASSERT_NOT_NULL(iovs);
@@ -3223,7 +3242,7 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
   delete[] iovs;
 }
 
@@ -3248,7 +3267,7 @@ TEST_CASE("fs_read_dir", "[fs]") {
   mkdir_cb_count = 0;
 
   /* Setup */
-  rmdir("test_dir");
+  w_rmdir("test_dir");
   r = mkdir_req.mkdir(loop, "test_dir", 0755, mkdir_cb, &mkdir_req);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
@@ -3288,7 +3307,7 @@ TEST_CASE("fs_read_dir", "[fs]") {
   close_req.cleanup();
 
   /* Cleanup */
-  rmdir("test_dir");
+  w_rmdir("test_dir");
 
   make_valgrind_happy();
 }
@@ -3370,7 +3389,7 @@ TEST_CASE("get_osfhandle_valid_handle", "[fs]") {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file", O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
@@ -3390,7 +3409,7 @@ TEST_CASE("get_osfhandle_valid_handle", "[fs]") {
   close_req.cleanup();
 
   /* Cleanup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
@@ -3403,7 +3422,7 @@ TEST_CASE("open_osfhandle_valid_handle", "[fs]") {
   int fd;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file", O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
@@ -3430,7 +3449,7 @@ TEST_CASE("open_osfhandle_valid_handle", "[fs]") {
   close_req.cleanup();
 
   /* Cleanup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
@@ -3444,7 +3463,7 @@ TEST_CASE("fs_file_pos_after_op_with_offset", "[fs]") {
   int r;
 
   /* Setup. */
-  unlink("test_file");
+  w_unlink("test_file");
 
   r = open_req.open("test_file", O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(r > 0);
@@ -3453,13 +3472,13 @@ TEST_CASE("fs_file_pos_after_op_with_offset", "[fs]") {
   iov = uv_buf_init(test_buf, sizeof(test_buf));
   r = write_req.write(open_req.result, &iov, 1, 0);
   ASSERT(r == sizeof(test_buf));
-  ASSERT(lseek(open_req.result, 0, SEEK_CUR) == 0);
+  ASSERT(w_lseek(open_req.result, 0, SEEK_CUR) == 0);
   write_req.cleanup();
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = read_req.read(open_req.result, &iov, 1, 0);
   ASSERT(r == sizeof(test_buf));
-  ASSERT(lseek(open_req.result, 0, SEEK_CUR) == 0);
+  ASSERT(w_lseek(open_req.result, 0, SEEK_CUR) == 0);
   read_req.cleanup();
 
   r = close_req.close(open_req.result);
@@ -3467,7 +3486,7 @@ TEST_CASE("fs_file_pos_after_op_with_offset", "[fs]") {
   close_req.cleanup();
 
   /* Cleanup */
-  unlink("test_file");
+  w_unlink("test_file");
 
   make_valgrind_happy();
 }
