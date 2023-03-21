@@ -242,7 +242,7 @@ static void open_nametoolong_cb(ns_fs* req) {
   req->cleanup();
 }
 
-TEST_CASE("fs_file_nametoolong", "[wip]") {
+TEST_CASE("fs_file_nametoolong", "[fs]") {
   ns_fs req;
   uv_loop_t* loop;
   int r;
