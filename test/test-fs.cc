@@ -2560,7 +2560,7 @@ TEST_CASE("fs_scandir_non_existent_dir", "[fs]") {
   req.cleanup();
 
   /* Fill the req to ensure that required fields are cleaned up */
-  memset(&req, 0xdb, sizeof(req.uv_req()));
+  memset(req.uv_req(), 0xdb, sizeof(*req.uv_req()));
 
   r = req.scandir(path, 0);
   ASSERT(r == UV_ENOENT);
