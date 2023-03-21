@@ -26,9 +26,15 @@ using util::addr_size;
 
 template <class UV_T, class R_T>
 template <typename CB, typename D_T>
-void ns_base_req<UV_T, R_T>::init(CB cb, D_T* data) {
+void ns_base_req<UV_T, R_T>::init(uv_loop_t* loop, CB cb, D_T* data) {
   req_cb_ = reinterpret_cast<void (*)()>(cb);
   req_cb_data_ = data;
+  loop_ = loop;
+}
+
+template <class UV_T, class R_T>
+uv_loop_t* ns_base_req<UV_T, R_T>::get_loop() {
+  return loop_;
 }
 
 template <class UV_T, class R_T>
@@ -292,7 +298,7 @@ int ns_addrinfo::get(uv_loop_t* loop,
                      const char* service,
                      const struct addrinfo* hints,
                      D_T* data) {
-  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb, data);
+  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(loop, cb, data);
   free();
 
   return uv_getaddrinfo(
@@ -309,7 +315,7 @@ int ns_addrinfo::get(uv_loop_t* loop,
                      const char* node,
                      const char* service,
                      const struct addrinfo* hints) {
-  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(cb);
+  ns_base_req<uv_getaddrinfo_t, ns_addrinfo>::init(loop, cb);
   free();
 
   return uv_getaddrinfo(loop,
@@ -390,7 +396,7 @@ int ns_fs::scandir_next(uv_dirent_t* ent) {
     return uv_fs_##name(nullptr, this, NSUV_PASS(P2), nullptr);                \
   }                                                                            \
   int ns_fs::name(uv_loop_t* loop, NSUV_PASS(P1), ns_fs_cb cb) {               \
-    ns_base_req<uv_fs_t, ns_fs>::init(cb);                                     \
+    ns_base_req<uv_fs_t, ns_fs>::init(loop, cb);                               \
     return uv_fs_##name(loop,                                                  \
                         this,                                                  \
                         NSUV_PASS(P2),                                         \
@@ -398,7 +404,7 @@ int ns_fs::scandir_next(uv_dirent_t* ent) {
   }                                                                            \
   template <typename D_T>                                                      \
   int ns_fs::name(uv_loop_t* loop, NSUV_PASS(P1), ns_fs_cb_d<D_T> cb, D_T* d) {\
-    ns_base_req<uv_fs_t, ns_fs>::init(cb, d);                                  \
+    ns_base_req<uv_fs_t, ns_fs>::init(loop, cb, d);                            \
     return uv_fs_##name(loop,                                                  \
                         this,                                                  \
                         NSUV_PASS(P2),                                         \
@@ -503,7 +509,7 @@ int ns_random::get(uv_loop_t* loop,
                    size_t buflen,
                    uint32_t flags,
                    ns_random_cb cb) {
-  ns_base_req<uv_random_t, ns_random>::init(cb);
+  ns_base_req<uv_random_t, ns_random>::init(loop, cb);
 
   return uv_random(loop,
                    this,
@@ -520,7 +526,7 @@ int ns_random::get(uv_loop_t* loop,
                    uint32_t flags,
                    ns_random_cb_d<D_T> cb,
                    D_T* data) {
-  ns_base_req<uv_random_t, ns_random>::init(cb, data);
+  ns_base_req<uv_random_t, ns_random>::init(loop, cb, data);
 
   return uv_random(loop,
                    this,

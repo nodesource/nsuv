@@ -83,9 +83,10 @@ template <class UV_T, class R_T>
 class ns_base_req : public UV_T {
  protected:
   template <typename CB, typename D_T = void>
-  NSUV_INLINE void init(CB cb, D_T* data = nullptr);
+  NSUV_INLINE void init(uv_loop_t* loop, CB cb, D_T* data = nullptr);
 
  public:
+  NSUV_INLINE uv_loop_t* get_loop();
   NSUV_INLINE UV_T* uv_req();
   NSUV_INLINE uv_req_t* base_req();
   NSUV_INLINE uv_req_type get_type();
@@ -104,6 +105,7 @@ class ns_base_req : public UV_T {
  protected:
   void (*req_cb_)() = nullptr;
   void* req_cb_data_ = nullptr;
+  uv_loop_t* loop_ = nullptr;
 };
 
 
