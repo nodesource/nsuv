@@ -75,8 +75,6 @@ static int futime_cb_count;
 static int lutime_cb_count;
 static int statfs_cb_count;
 
-static uv_loop_t* loop;
-
 static char buf[32];
 static char buf2[32];
 static char test_buf[] = "test-buffer\n";
@@ -163,7 +161,7 @@ static void close_cb(ns_fs* req) {
   req->cleanup();
   if (close_cb_count == 3) {
     ns_fs* unlink_req = new (std::nothrow) ns_fs();
-    r = unlink_req->unlink(loop, "test_file2", unlink_cb2);
+    r = unlink_req->unlink(req->get_loop(), "test_file2", unlink_cb2);
     ASSERT(r == 0);
   }
   delete req;
@@ -213,6 +211,7 @@ static void open_noent_cb(ns_fs* req) {
 
 TEST_CASE("fs_file_noent", "[fs]") {
   ns_fs req;
+  uv_loop_t* loop;
   int r;
 
   open_cb_count = 0;
@@ -245,6 +244,7 @@ static void open_nametoolong_cb(ns_fs* req) {
 
 TEST_CASE("fs_file_nametoolong", "[wip]") {
   ns_fs req;
+  uv_loop_t* loop;
   int r;
   char name[TOO_LONG_NAME_LENGTH + 1];
 
@@ -279,6 +279,7 @@ static void open_loop_cb(ns_fs* req) {
 
 TEST_CASE("fs_file_loop", "[fs]") {
   ns_fs req;
+  uv_loop_t* loop;
   int r;
 
   loop = uv_default_loop();
@@ -388,7 +389,7 @@ static void fsync_cb(ns_fs* req, ns_fs* open_req1) {
   ASSERT(req->result == 0);
   fsync_cb_count++;
   req->cleanup();
-  r = close_req->close(loop, open_req1->result, close_cb);
+  r = close_req->close(req->get_loop(), open_req1->result, close_cb);
   ASSERT(r == 0);
   delete req;
 }
@@ -400,7 +401,7 @@ static void fdatasync_cb(ns_fs* req, ns_fs* open_req1) {
   ASSERT(req->result == 0);
   fdatasync_cb_count++;
   req->cleanup();
-  r = fsync_req->fsync(loop, open_req1->result, fsync_cb, open_req1);
+  r = fsync_req->fsync(req->get_loop(), open_req1->result, fsync_cb, open_req1);
   ASSERT(r == 0);
   delete req;
 }
@@ -414,7 +415,7 @@ static void write_cb(ns_fs* req, ns_fs* open_req1) {
   write_cb_count++;
   req->cleanup();
   r = fdatasync_req->fdatasync(
-      loop, open_req1->result, fdatasync_cb, open_req1);
+      req->get_loop(), open_req1->result, fdatasync_cb, open_req1);
   ASSERT(r == 0);
   delete req;
 }
@@ -428,7 +429,8 @@ static void create_cb(ns_fs* req, ns_fs* open_req1) {
   create_cb_count++;
   req->cleanup();
   iov = uv_buf_init(test_buf, sizeof(test_buf));
-  r = write_req->write(loop, req->result, { iov }, -1, write_cb, open_req1);
+  r = write_req->write(
+      req->get_loop(), req->result, { iov }, -1, write_cb, open_req1);
   ASSERT(r == 0);
 }
 
@@ -440,7 +442,7 @@ static void ftruncate_cb(ns_fs* req, ns_fs* open_req1) {
   ASSERT(req->result == 0);
   ftruncate_cb_count++;
   req->cleanup();
-  r = close_req->close(loop, open_req1->result, close_cb);
+  r = close_req->close(req->get_loop(), open_req1->result, close_cb);
   ASSERT(r == 0);
   delete req;
 }
@@ -454,9 +456,10 @@ static void read_cb(ns_fs* req, ns_fs* open_req1) {
   read_cb_count++;
   req->cleanup();
   if (read_cb_count == 1) {
-    r = rreq->ftruncate(loop, open_req1->result, 7, ftruncate_cb, open_req1);
+    r = rreq->ftruncate(
+        req->get_loop(), open_req1->result, 7, ftruncate_cb, open_req1);
   } else {
-    r = rreq->close(loop, open_req1->result, close_cb);
+    r = rreq->close(req->get_loop(), open_req1->result, close_cb);
   }
   ASSERT(r == 0);
   delete req;
@@ -479,7 +482,12 @@ static void open_cb(ns_fs* open_req1) {
   open_req1->cleanup();
   memset(buf, 0, sizeof(buf));
   iov = uv_buf_init(buf, sizeof(buf));
-  r = read_req->read(loop, open_req1->result, { iov }, -1, read_cb, open_req1);
+  r = read_req->read(open_req1->get_loop(),
+                     open_req1->result,
+                     { iov },
+                     -1,
+                     read_cb,
+                     open_req1);
   ASSERT(r == 0);
 }
 
@@ -493,6 +501,7 @@ static void rename_cb(ns_fs* req) {
 TEST_CASE("fs_file_async", "[fs]") {
   ns_fs open_req1;
   ns_fs rename_req;
+  uv_loop_t* loop;
   int r;
 
   /* Setup. */
@@ -578,8 +587,6 @@ static void fs_file_sync(int add_flags) {
   /* Setup. */
   unlink("test_file");
   unlink("test_file2");
-
-  loop = uv_default_loop();
 
   r = open_req1.open(
       "test_file", O_WRONLY | O_CREAT | add_flags, S_IWUSR | S_IRUSR);
@@ -668,8 +675,6 @@ static void fs_file_write_null_buffer(int add_flags) {
   /* Setup. */
   unlink("test_file");
 
-  loop = uv_default_loop();
-
   r = open_req1.open(
       "test_file", O_WRONLY | O_CREAT | add_flags, S_IWUSR | S_IRUSR);
   ASSERT(r >= 0);
@@ -743,6 +748,7 @@ TEST_CASE("fs_async_dir", "[fs]") {
   ns_fs scandir_req;
   ns_fs stat_req;
   ns_fs unlink_req;
+  uv_loop_t* loop;
 
   /* Setup */
   unlink("test_dir/file1");
@@ -860,6 +866,7 @@ static void test_sendfile(void (*setup)(int),
   ns_fs open_req2;
   ns_fs req;
   ns_fs sendfile_req;
+  uv_loop_t* loop;
   char buf1[1];
 
   loop = uv_default_loop();
@@ -979,6 +986,7 @@ TEST_CASE("fs_mkdtemp", "[fs]") {
   const char* path_template = "test_dir_XXXXXX";
   ns_fs mkdtemp_req1;
   ns_fs mkdtemp_req2;
+  uv_loop_t* loop;
 
   loop = uv_default_loop();
   mkdtemp_cb_count = 0;
@@ -1041,6 +1049,7 @@ TEST_CASE("fs_mkstemp", "[fs]") {
   ns_fs mkstemp_req2;
   ns_fs mkstemp_req3;
   ns_fs req;
+  uv_loop_t* loop;
 
   loop = uv_default_loop();
   mkstemp_cb_count = 0;
@@ -1117,6 +1126,7 @@ TEST_CASE("fs_fstat", "[fs]") {
   ns_fs req;
   uv_file file;
   uv_stat_t* s;
+  uv_loop_t* loop;
 #ifndef _WIN32
   struct stat t;
 #endif
@@ -1323,6 +1333,7 @@ TEST_CASE("fs_access", "[fs]") {
   int r;
   ns_fs req;
   uv_file file;
+  uv_loop_t* loop;
 
   /* Setup. */
   unlink("test_file");
@@ -1414,6 +1425,7 @@ TEST_CASE("fs_chmod", "[fs]") {
   int r;
   ns_fs req;
   uv_file file;
+  uv_loop_t* loop;
 
   /* Setup. */
   unlink("test_file");
@@ -1512,6 +1524,7 @@ TEST_CASE("fs_unlink_readonly", "[fs]") {
   int r;
   ns_fs req;
   uv_file file;
+  uv_loop_t* loop;
 
   /* Setup. */
   unlink("test_file");
@@ -1615,6 +1628,7 @@ TEST_CASE("fs_chown", "[fs]") {
   int r;
   ns_fs req;
   uv_file file;
+  uv_loop_t* loop;
 
   /* Setup. */
   unlink("test_file");
@@ -1717,6 +1731,7 @@ TEST_CASE("fs_link", "[fs]") {
   ns_fs req;
   uv_file file;
   uv_file link;
+  uv_loop_t* loop;
 
   /* Setup. */
   unlink("test_file");
@@ -1802,6 +1817,7 @@ TEST_CASE("fs_readlink", "[fs]") {
   /* Must return UV_ENOENT on an inexistent file */
   {
     ns_fs req;
+    uv_loop_t* loop;
 
     loop = uv_default_loop();
     dummy_cb_count = 0;
@@ -1853,6 +1869,7 @@ TEST_CASE("fs_readlink", "[fs]") {
 
 TEST_CASE("fs_realpath", "[fs]") {
   ns_fs req;
+  uv_loop_t* loop;
 
   loop = uv_default_loop();
   dummy_cb_count = 0;
@@ -1909,6 +1926,7 @@ TEST_CASE("fs_symlink", "[fs]") {
   ns_fs req;
   uv_file file;
   uv_file link;
+  uv_loop_t* loop;
   char test_file_abs_buf[PATHMAX];
   size_t test_file_abs_size;
 
@@ -2073,8 +2091,6 @@ static void test_symlink_dir_impl(int type) {
   rmdir("test_dir_symlink");
   test_dir_abs_size = sizeof(test_dir_abs_buf);
 
-  loop = uv_default_loop();
-
   r = req.mkdir("test_dir", 0777);
   req.cleanup();
 
@@ -2225,6 +2241,7 @@ TEST_CASE("fs_utime", "[fs]") {
   double mtime;
   ns_fs utime_req;
   ns_fs req;
+  uv_loop_t* loop;
   int r;
 
   /* Setup. */
@@ -2272,7 +2289,6 @@ TEST_CASE("fs_utime_round", "[fs]") {
   ns_fs req;
   int r;
 
-  loop = uv_default_loop();
   unlink(path);
   r = req.open(path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT_GE(r, 0);
@@ -2323,6 +2339,7 @@ TEST_CASE("fs_futime", "[fs]") {
   uv_file file;
   ns_fs futime_req;
   ns_fs req;
+  uv_loop_t* loop;
   int r;
 #if defined(_AIX) && !defined(_AIX71)
   RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
@@ -2399,6 +2416,7 @@ TEST_CASE("fs_lutime", "[fs]") {
   double atime;
   double mtime;
   ns_fs req;
+  uv_loop_t* loop;
   int r, s;
 
 
@@ -2471,8 +2489,6 @@ TEST_CASE("fs_stat_missing_path", "[fs]") {
   ns_fs req;
   int r;
 
-  loop = uv_default_loop();
-
   r = req.stat("non_existent_file");
   ASSERT(r == UV_ENOENT);
   ASSERT(req.result == UV_ENOENT);
@@ -2500,6 +2516,7 @@ TEST_CASE("fs_scandir_empty_dir", "[fs]") {
   ns_fs req;
   ns_fs scandir_req;
   uv_dirent_t dent;
+  uv_loop_t* loop;
   int r;
 
   loop = uv_default_loop();
