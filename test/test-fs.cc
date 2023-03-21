@@ -106,17 +106,6 @@ int uv_test_getiovmax(void) {
 }
 #endif
 
-#ifdef _WIN32
-/*
- * This tag and guid have no special meaning, and don't conflict with
- * reserved ids.
-*/
-static unsigned REPARSE_TAG = 0x9913;
-static GUID REPARSE_GUID = {
-  0x1bf6205f, 0x46ae, 0x4527,
-  { 0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 }};
-#endif
-
 static void check_permission(const char* filename, unsigned int mode) {
   int r;
   uv_fs_t req;
@@ -293,12 +282,12 @@ TEST_CASE("fs_file_loop", "[fs]") {
    * we'll see UV_EPERM.
    */
   if (r == UV_EPERM)
-    return 0;
+    return;
 #elif defined(__MSYS__)
   /* MSYS2's approximation of symlinks with copies does not work for broken
      links.  */
   if (r == UV_ENOENT)
-    return 0;
+    return;
 #endif
   ASSERT(r == 0);
   req.cleanup();
@@ -1300,15 +1289,15 @@ TEST_CASE("fs_fstat_stdio", "[fs]") {
     ASSERT(req.result == 0);
 
 #ifdef _WIN32
-    st = req.ptr;
+    st = static_cast<uv_stat_t*>(req.ptr);
     ft = uv_guess_handle(fd);
     switch (ft) {
     case UV_TTY:
     case UV_NAMED_PIPE:
-      ASSERT(st->st_mode == ft == UV_TTY ? S_IFCHR : S_IFIFO);
+      ASSERT((st->st_mode == (ft == UV_TTY ? S_IFCHR : S_IFIFO)));
       ASSERT(st->st_nlink == 1);
       ASSERT(
-          st->st_rdev ==
+          static_cast<int>(st->st_rdev) ==
           (ft == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16);
       break;
     default:
@@ -1911,8 +1900,8 @@ static void realpath_cb(ns_fs* req) {
 
   uv_cwd(test_file_abs_buf, &test_file_abs_size);
 #ifdef _WIN32
-  strcat(test_file_abs_buf, "\\test_file"); // NOLINT
-  ASSERT(stricmp(req->ptr, test_file_abs_buf) == 0);
+  strcat_s(test_file_abs_buf, sizeof(test_file_abs_buf), "\\test_file"); // NOLINT
+  ASSERT(w_stricmp(static_cast<char*>(req->ptr), test_file_abs_buf) == 0);
 #else
   strcat(test_file_abs_buf, "/test_file"); // NOLINT
   // ASSERT(strcmp(req->ptr, test_file_abs_buf) == 0);
@@ -1942,7 +1931,8 @@ TEST_CASE("fs_symlink", "[fs]") {
   test_file_abs_size = sizeof(test_file_abs_buf);
 #ifdef _WIN32
   uv_cwd(test_file_abs_buf, &test_file_abs_size);
-  strcat(test_file_abs_buf, "\\test_file"); // NOLINT
+  strcat_s(
+      test_file_abs_buf, sizeof(test_file_abs_buf), "\\test_file");  // NOLINT
 #else
   uv_cwd(test_file_abs_buf, &test_file_abs_size);
   strcat(test_file_abs_buf, "/test_file"); // NOLINT
@@ -1973,13 +1963,13 @@ TEST_CASE("fs_symlink", "[fs]") {
        * Windows doesn't support symlinks on older versions.
        * We just pass the test and bail out early if we get ENOTSUP.
        */
-      return 0;
+      return;
     } else if (r == UV_EPERM) {
       /*
        * Creating a symlink is only allowed when running elevated.
        * We pass the test and bail out early if we get UV_EPERM.
        */
-      return 0;
+      return;
     }
   }
 #endif
@@ -2095,10 +2085,10 @@ static void test_symlink_dir_impl(int type) {
   req.cleanup();
 
 #ifdef _WIN32
-  strcpy(test_dir_abs_buf, "\\\\?\\"); // NOLINT
+  strcpy_s(test_dir_abs_buf, test_dir_abs_size, "\\\\?\\"); // NOLINT
   uv_cwd(test_dir_abs_buf + 4, &test_dir_abs_size);
   test_dir_abs_size += 4;
-  strcat(test_dir_abs_buf, "\\test_dir\\"); // NOLINT
+  strcat_s(test_dir_abs_buf, sizeof(test_dir_abs_buf), "\\test_dir\\"); // NOLINT
   test_dir_abs_size += strlen("\\test_dir\\");
   test_dir = test_dir_abs_buf;
 #else
@@ -2154,8 +2144,9 @@ static void test_symlink_dir_impl(int type) {
   r = req.realpath("test_dir_symlink");
   ASSERT(r == 0);
 #ifdef _WIN32
-  ASSERT(strlen(req.ptr) == test_dir_abs_size - 5);
-  ASSERT(strnicmp(req.ptr, test_dir.c_str() + 4, test_dir_abs_size - 5) == 0);
+  ASSERT(strlen(static_cast<char*>(req.ptr)) == test_dir_abs_size - 5);
+  ASSERT(w_strnicmp(static_cast<char*>(req.ptr),
+                    test_dir.c_str() + 4, test_dir_abs_size - 5) == 0);
 #else
   // ASSERT(strcmp(req.ptr, test_dir_abs_buf) == 0);
 #endif

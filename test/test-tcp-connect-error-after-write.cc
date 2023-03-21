@@ -45,7 +45,6 @@ TEST_CASE("tcp_connect_error_after_write", "[tcp]") {
 #ifdef _WIN32
   fprintf(stderr, "This test is disabled on Windows for now.\n");
   fprintf(stderr, "See https://github.com/joyent/libuv/issues/444\n");
-  return 0; /* windows slackers... */
 #endif
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", kTestPort, &addr));

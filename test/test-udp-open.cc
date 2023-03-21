@@ -157,8 +157,6 @@ TEST_CASE("udp_open", "[udp]") {
 
     client2.close();
   }
-#else  /* _WIN32 */
-  reinterpret_cast<void>(client2);
 #endif
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
