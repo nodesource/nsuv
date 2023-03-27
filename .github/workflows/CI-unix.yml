@@ -1,0 +1,34 @@
+name: CI-unix
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: libuv/libuv
+          ref: v1.44.2
+          path: libuv
+      - name: Build libuv
+        run: |
+          cd libuv
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Debug
+          cd ..
+          cmake --build build --config Debug
+          cd ..
+      - name: Build tests
+        run: CXXFLAGS="-Ilibuv/include -Llibuv/build" make nsuv
+      - name: Run tests
+        run: ./out/run_tests
+
+
