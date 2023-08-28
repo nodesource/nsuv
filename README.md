@@ -3,6 +3,9 @@ C++ wrapper around libuv focused on making callback arg passing safer. The
 data passed to the callback does not use the `data` member of the
 `uv_handle_t` or `uv_req_t`. So they can still be used as usual.
 
+You can [check out our blog post](https://nodesource.com/blog/intro-nsuv/)
+for additional information.
+
 Example usage:
 ```cpp
 // Notice that the second argument of the callback can contain any pointer type,
