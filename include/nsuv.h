@@ -74,6 +74,28 @@ class ns_mutex;
 class ns_rwlock;
 class ns_thread;
 
+namespace util {
+
+static NSUV_INLINE int addr_size(const struct sockaddr*);
+
+template <class T>
+class no_throw_vec {
+ public:
+  NSUV_INLINE ~no_throw_vec();
+  NSUV_INLINE const T* data();
+  NSUV_INLINE size_t size();
+  // If internal pointer changes, does not copy values over.
+  NSUV_INLINE int reserve(size_t n);
+  NSUV_INLINE int replace(const T* b, size_t n);
+ private:
+  T datasml_[4];  // match uv_write_t::bufsml.
+  T* data_ = nullptr;
+  size_t size_ = 0;
+  size_t capacity_ = 0;
+};
+
+}  // namespace util
+
 /**
  * UV_T - uv_<type>_t this class inherits.
  * R_T  - ns_<req_type> that inherits this class.
@@ -161,7 +183,8 @@ class ns_connect : public ns_req<uv_connect_t, ns_connect<H_T>, H_T> {
 template <class H_T>
 class ns_write : public ns_req<uv_write_t, ns_write<H_T>, H_T> {
  public:
-  NSUV_INLINE std::vector<uv_buf_t>& bufs();
+  NSUV_INLINE const uv_buf_t* bufs();
+  NSUV_INLINE size_t size();
 
  private:
   template <class, class>
@@ -177,12 +200,8 @@ class ns_write : public ns_req<uv_write_t, ns_write<H_T>, H_T> {
   NSUV_INLINE NSUV_WUR int init(const std::vector<uv_buf_t>& bufs,
                                 CB cb,
                                 D_T* data = nullptr);
-  template <typename CB, typename D_T = void>
-  NSUV_INLINE NSUV_WUR int init(std::vector<uv_buf_t>&& bufs,
-                                CB cb,
-                                D_T* data = nullptr);
 
-  std::vector<uv_buf_t> bufs_;
+  util::no_throw_vec<uv_buf_t> bufs_;
 };
 
 
@@ -190,7 +209,8 @@ class ns_write : public ns_req<uv_write_t, ns_write<H_T>, H_T> {
 
 class ns_udp_send : public ns_req<uv_udp_send_t, ns_udp_send, ns_udp> {
  public:
-  NSUV_INLINE std::vector<uv_buf_t>& bufs();
+  NSUV_INLINE const uv_buf_t* bufs();
+  NSUV_INLINE size_t size();
   NSUV_INLINE const struct sockaddr* sockaddr();
 
  private:
@@ -207,13 +227,8 @@ class ns_udp_send : public ns_req<uv_udp_send_t, ns_udp_send, ns_udp> {
                        const struct sockaddr* addr,
                        CB cb,
                        D_T* data = nullptr);
-  template <typename CB, typename D_T = void*>
-  NSUV_INLINE int init(std::vector<uv_buf_t>&& bufs,
-                       const struct sockaddr* addr,
-                       CB cb,
-                       D_T* data = nullptr);
 
-  std::vector<uv_buf_t> bufs_;
+  util::no_throw_vec<uv_buf_t> bufs_;
   std::unique_ptr<struct sockaddr_storage> addr_;
 };
 
@@ -892,11 +907,6 @@ class ns_thread {
   void* thread_cb_data_ = nullptr;
 };
 
-namespace util {
-
-static NSUV_INLINE int addr_size(const struct sockaddr*);
-
-}  // namespace util
 }  // namespace nsuv
 
 #undef NSUV_CB_FNS

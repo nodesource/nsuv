@@ -10,7 +10,7 @@
 #include <cstdlib>  // abort
 #include <cstring>  // memcpy
 #include <new>      // nothrow
-#include <utility>  // move
+#include <type_traits>  // is_trivial
 
 namespace nsuv {
 
@@ -153,17 +153,11 @@ template <typename CB, typename D_T>
 int ns_write<H_T>::init(
     const uv_buf_t bufs[], size_t nbufs, CB cb, D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
-  // Clear this in case it's being reused.
-  bufs_.clear();
-  try {
-    bufs_.reserve(nbufs);
-  } catch (...) {
-    return UV_ENOMEM;
-  }
-  for (size_t i = 0; i < nbufs; i++) {
-    bufs_.push_back(bufs[i]);
-  }
-  return NSUV_OK;
+
+  int er = bufs_.reserve(nbufs);
+  if (er)
+    return er;
+  return bufs_.replace(bufs, nbufs);
 }
 
 template <class H_T>
@@ -172,29 +166,21 @@ int ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
                         CB cb,
                         D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
-  bufs_.clear();
-  try {
-    bufs_.reserve(bufs.size());
-  } catch (...) {
-    return UV_ENOMEM;
-  }
-  bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
-  return NSUV_OK;
+
+  int er = bufs_.reserve(bufs.size());
+  if (er)
+    return er;
+  return bufs_.replace(bufs.data(), bufs.size());
 }
 
 template <class H_T>
-template <typename CB, typename D_T>
-int ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
-                        CB cb,
-                        D_T* data) {
-  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
-  bufs_ = std::move(bufs);
-  return NSUV_OK;
+const uv_buf_t* ns_write<H_T>::bufs() {
+  return bufs_.data();
 }
 
 template <class H_T>
-std::vector<uv_buf_t>& ns_write<H_T>::bufs() {
-  return bufs_;
+size_t ns_write<H_T>::size() {
+  return bufs_.size();
 }
 
 
@@ -207,16 +193,23 @@ int ns_udp_send::init(const uv_buf_t bufs[],
                       CB cb,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  std::vector<uv_buf_t> vbufs;
-  try {
-    vbufs.reserve(nbufs);
-  } catch (...) {
-    return UV_ENOMEM;
+
+  if (addr != nullptr) {
+    addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (addr == nullptr)
+      return UV_ENOMEM;
+
+    int len = addr_size(addr);
+    if (len < 0)
+      return len;
+
+    std::memcpy(addr_.get(), addr, len);
   }
-  for (size_t i = 0; i < nbufs; i++) {
-    vbufs.push_back(bufs[i]);
-  }
-  return init(std::move(vbufs), addr, cb, data);
+
+  int er = bufs_.reserve(nbufs);
+  if (er)
+    return er;
+  return bufs_.replace(bufs, nbufs);
 }
 
 template <typename CB, typename D_T>
@@ -225,13 +218,7 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
                       CB cb,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  bufs_.clear();
-  try {
-    bufs_.reserve(bufs.size());
-  } catch (...) {
-    return UV_ENOMEM;
-  }
-  bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
+
   if (addr != nullptr) {
     addr_.reset(new (std::nothrow) struct sockaddr_storage());
     if (addr == nullptr)
@@ -244,33 +231,18 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
     std::memcpy(addr_.get(), addr, len);
   }
 
-  return NSUV_OK;
+  int er = bufs_.reserve(bufs.size());
+  if (er)
+    return er;
+  return bufs_.replace(bufs.data(), bufs.size());
 }
 
-template <typename CB, typename D_T>
-int ns_udp_send::init(std::vector<uv_buf_t>&& bufs,
-                      const struct sockaddr* addr,
-                      CB cb,
-                      D_T* data) {
-  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  bufs_ = std::move(bufs);
-  if (addr != nullptr) {
-    addr_.reset(new (std::nothrow) struct sockaddr_storage());
-    if (addr == nullptr)
-      return UV_ENOMEM;
-
-    int len = addr_size(addr);
-    if (len < 0)
-      return len;
-
-    std::memcpy(addr_.get(), addr, len);
-  }
-
-  return NSUV_OK;
+const uv_buf_t* ns_udp_send::bufs() {
+  return bufs_.data();
 }
 
-std::vector<uv_buf_t>& ns_udp_send::bufs() {
-  return bufs_;
+size_t ns_udp_send::size() {
+  return bufs_.size();
 }
 
 const sockaddr* ns_udp_send::sockaddr() {
@@ -892,8 +864,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
 }
 
@@ -907,8 +879,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
 }
 
@@ -925,8 +897,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
 }
 
@@ -951,8 +923,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
 }
 
@@ -1466,8 +1438,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      nullptr);
 }
@@ -1481,8 +1453,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      nullptr);
 }
@@ -1498,8 +1470,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
 }
@@ -1514,8 +1486,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
 }
@@ -1533,8 +1505,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
 }
@@ -1560,8 +1532,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
 }
@@ -1876,6 +1848,63 @@ int util::addr_size(const struct sockaddr* addr) {
   }
 
   return len;
+}
+
+template <class T>
+util::no_throw_vec<T>::~no_throw_vec() {
+  if (data_ != datasml_)
+    delete[] data_;
+}
+
+template <class T>
+const T* util::no_throw_vec<T>::data() {
+  return data_;
+}
+
+template <class T>
+size_t util::no_throw_vec<T>::size() {
+  return size_;
+}
+
+template <class T>
+int util::no_throw_vec<T>::reserve(size_t n) {
+  // There's no need to handle the n == 0 case since it's unlikely to
+  // happen, and if it does then there's no harm in allocating an array of 0.
+  if (n > sizeof(datasml_) / sizeof(datasml_[0])) {
+    if (data_ == datasml_) {
+      data_ = new (std::nothrow) T[n]();
+      if (data_ == nullptr)
+        return UV_ENOMEM;
+      capacity_ = n;
+
+    } else if (capacity_ < n) {
+      if (data_ != datasml_)
+        delete[] data_;
+      data_ = datasml_;
+      capacity_ = sizeof(datasml_) / sizeof(datasml_[0]);
+    }
+  } else {
+    if (data_ != datasml_)
+      delete[] data_;
+    data_ = datasml_;
+    capacity_ = sizeof(datasml_) / sizeof(datasml_[0]);
+  }
+  return NSUV_OK;
+}
+
+template <class T>
+int util::no_throw_vec<T>::replace(const T* b, size_t n) {
+  // This shouldn't be necessary, but just for safety of the memcpy().
+  static_assert(std::is_trivially_copyable<T>::value,
+                "type is not trivially copyable");
+
+  memcpy(data_, b, n * sizeof(b[0]));
+  // Zero out the remaining values.
+  if (n < capacity_)
+    memset(&data_[n], 0, (capacity_ - n) * sizeof(data_[0]));
+  size_ = n;
+
+  return NSUV_OK;
 }
 
 #undef NSUV_CHECK_NULL
