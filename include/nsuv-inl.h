@@ -20,8 +20,6 @@ namespace nsuv {
 
 #define NSUV_OK 0
 
-using util::addr_size;
-
 /* ns_base_req */
 
 template <class UV_T, class R_T>
@@ -130,7 +128,7 @@ void ns_req<UV_T, R_T, H_T>::handle(H_T* handle) {
 template <class H_T>
 template <typename CB, typename D_T>
 int ns_connect<H_T>::init(const struct sockaddr* addr, CB cb, D_T* data) {
-  int len = addr_size(addr);
+  int len = util::addr_size(addr);
   if (len < 0)
     return len;
 
@@ -199,7 +197,7 @@ int ns_udp_send::init(const uv_buf_t bufs[],
     if (addr == nullptr)
       return UV_ENOMEM;
 
-    int len = addr_size(addr);
+    int len = util::addr_size(addr);
     if (len < 0)
       return len;
 
@@ -224,7 +222,7 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
     if (addr == nullptr)
       return UV_ENOMEM;
 
-    int len = addr_size(addr);
+    int len = util::addr_size(addr);
     if (len < 0)
       return len;
 
@@ -1377,7 +1375,7 @@ int ns_udp::bind(const struct sockaddr* addr, unsigned int flags) {
       if (local_addr_ == nullptr)
         return UV_ENOMEM;
 
-      int len = addr_size(addr);
+      int len = util::addr_size(addr);
       if (len < 0)
         return len;
 
@@ -1398,7 +1396,7 @@ int ns_udp::connect(const struct sockaddr* addr) {
       if (remote_addr_ == nullptr)
         return UV_ENOMEM;
 
-      int len = addr_size(addr);
+      int len = util::addr_size(addr);
       if (len < 0)
         return len;
 
