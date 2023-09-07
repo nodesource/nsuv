@@ -35,13 +35,17 @@ static void connect_cb(ns_connect<ns_tcp>*, int status) {
 
 
 static void write_cb(ns_write<ns_tcp>* req, int status) {
+  const uv_buf_t* bufs;
+  size_t nbufs;
   /* write callbacks should run before the close callback */
   ASSERT_EQ(0, status);
   ASSERT_EQ(0, close_cb_called);
   ASSERT_EQ(req->handle(), &tcp_handle);
   write_cb_called++;
-  for (auto buf : req->bufs()) {
-    delete[] buf.base;
+  bufs = req->bufs();
+  nbufs = req->size();
+  for (size_t i = 0; i < nbufs; i++) {
+    delete[] bufs[i].base;
   }
   delete req;
 }

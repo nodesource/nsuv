@@ -155,11 +155,9 @@ int ns_write<H_T>::init(
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   // Clear this in case it's being reused.
   bufs_.clear();
-  try {
-    bufs_.reserve(nbufs);
-  } catch (...) {
+  bufs_.reserve(nbufs);
+  if (bufs_.capacity() < nbufs)
     return UV_ENOMEM;
-  }
   for (size_t i = 0; i < nbufs; i++) {
     bufs_.push_back(bufs[i]);
   }
@@ -173,28 +171,21 @@ int ns_write<H_T>::init(const std::vector<uv_buf_t>& bufs,
                         D_T* data) {
   ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
   bufs_.clear();
-  try {
-    bufs_.reserve(bufs.size());
-  } catch (...) {
+  bufs_.reserve(bufs.size());
+  if (bufs_.capacity() < bufs.size())
     return UV_ENOMEM;
-  }
   bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
   return NSUV_OK;
 }
 
 template <class H_T>
-template <typename CB, typename D_T>
-int ns_write<H_T>::init(std::vector<uv_buf_t>&& bufs,
-                        CB cb,
-                        D_T* data) {
-  ns_req<uv_write_t, ns_write<H_T>, H_T>::init(cb, data);
-  bufs_ = std::move(bufs);
-  return NSUV_OK;
+const uv_buf_t* ns_write<H_T>::bufs() {
+  return bufs_.data();
 }
 
 template <class H_T>
-std::vector<uv_buf_t>& ns_write<H_T>::bufs() {
-  return bufs_;
+size_t ns_write<H_T>::size() {
+  return bufs_.size();
 }
 
 
@@ -207,16 +198,27 @@ int ns_udp_send::init(const uv_buf_t bufs[],
                       CB cb,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  std::vector<uv_buf_t> vbufs;
-  try {
-    vbufs.reserve(nbufs);
-  } catch (...) {
+  bufs_.clear();
+  bufs_.reserve(nbufs);
+  if (bufs_.capacity() < nbufs)
     return UV_ENOMEM;
-  }
   for (size_t i = 0; i < nbufs; i++) {
-    vbufs.push_back(bufs[i]);
+    bufs_.push_back(bufs[i]);
   }
-  return init(std::move(vbufs), addr, cb, data);
+
+  if (addr != nullptr) {
+    addr_.reset(new (std::nothrow) struct sockaddr_storage());
+    if (addr == nullptr)
+      return UV_ENOMEM;
+
+    int len = addr_size(addr);
+    if (len < 0)
+      return len;
+
+    std::memcpy(addr_.get(), addr, len);
+  }
+
+  return NSUV_OK;
 }
 
 template <typename CB, typename D_T>
@@ -226,12 +228,11 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
                       D_T* data) {
   ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
   bufs_.clear();
-  try {
-    bufs_.reserve(bufs.size());
-  } catch (...) {
+  bufs_.reserve(bufs.size());
+  if (bufs_.capacity() < bufs.size())
     return UV_ENOMEM;
-  }
   bufs_.insert(bufs_.begin(), bufs.begin(), bufs.end());
+
   if (addr != nullptr) {
     addr_.reset(new (std::nothrow) struct sockaddr_storage());
     if (addr == nullptr)
@@ -247,30 +248,12 @@ int ns_udp_send::init(const std::vector<uv_buf_t>& bufs,
   return NSUV_OK;
 }
 
-template <typename CB, typename D_T>
-int ns_udp_send::init(std::vector<uv_buf_t>&& bufs,
-                      const struct sockaddr* addr,
-                      CB cb,
-                      D_T* data) {
-  ns_req<uv_udp_send_t, ns_udp_send, ns_udp>::init(cb, data);
-  bufs_ = std::move(bufs);
-  if (addr != nullptr) {
-    addr_.reset(new (std::nothrow) struct sockaddr_storage());
-    if (addr == nullptr)
-      return UV_ENOMEM;
-
-    int len = addr_size(addr);
-    if (len < 0)
-      return len;
-
-    std::memcpy(addr_.get(), addr, len);
-  }
-
-  return NSUV_OK;
+const uv_buf_t* ns_udp_send::bufs() {
+  return bufs_.data();
 }
 
-std::vector<uv_buf_t>& ns_udp_send::bufs() {
-  return bufs_;
+size_t ns_udp_send::size() {
+  return bufs_.size();
 }
 
 const sockaddr* ns_udp_send::sockaddr() {
@@ -892,8 +875,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
 }
 
@@ -907,8 +890,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
 }
 
@@ -925,8 +908,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
 }
 
@@ -951,8 +934,8 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
 
   return uv_write(req->uv_req(),
                   base_stream(),
-                  req->bufs().data(),
-                  req->bufs().size(),
+                  req->bufs(),
+                  req->size(),
                   NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
 }
 
@@ -1466,8 +1449,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      nullptr);
 }
@@ -1481,8 +1464,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      nullptr);
 }
@@ -1498,8 +1481,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
 }
@@ -1514,8 +1497,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
 }
@@ -1533,8 +1516,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
 }
@@ -1560,8 +1543,8 @@ int ns_udp::send(ns_udp_send* req,
 
   return uv_udp_send(req->uv_req(),
                      uv_handle(),
-                     req->bufs().data(),
-                     req->bufs().size(),
+                     req->bufs(),
+                     req->size(),
                      addr,
                      NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
 }
