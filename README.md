@@ -36,8 +36,9 @@ static void read_cb(ns_tcp* handle, ssize_t, const uv_buf_t*) {
 }
 
 static void write_cb(ns_write<ns_tcp>* req, int) {
-  // Retrieve a reference to the uv_buf_t array as a std::vector.
-  // req->bufs().size() == 2;
+  // Retrieve a reference to the uv_buf_t array and size.
+  uv_buf_t* bufs = req->bufs();
+  size_t size = req->size();
 }
 
 static void connection_cb(ns_tcp* server, int) {
