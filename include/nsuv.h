@@ -377,7 +377,7 @@ class ns_random : public ns_base_req<uv_random_t, ns_random> {
                  uv_random_t* handle,
                  int status,
                  void* buf,
-                 size_t buflen);
+                 size_t buflen)
 };
 
 
@@ -405,8 +405,8 @@ class ns_work : public ns_base_req<uv_work_t, ns_work> {
                                       D_T* data);
 
  private:
-  NSUV_PROXY_FNS(work_proxy_, uv_work_t*);
-  NSUV_PROXY_FNS(after_proxy_, uv_work_t*, int);
+  NSUV_PROXY_FNS(work_proxy_, uv_work_t*)
+  NSUV_PROXY_FNS(after_proxy_, uv_work_t*, int)
 
   void (*work_cb_ptr_)() = nullptr;
   void (*after_cb_ptr_)() = nullptr;
