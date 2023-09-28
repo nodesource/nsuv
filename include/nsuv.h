@@ -78,6 +78,9 @@ namespace util {
 
 static NSUV_INLINE int addr_size(const struct sockaddr*);
 
+template <typename T, typename U>
+T check_null_cb(U cb, T proxy);
+
 template <class T>
 class no_throw_vec {
  public:

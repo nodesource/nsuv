@@ -16,8 +16,6 @@ namespace nsuv {
 
 #define NSUV_CAST_NULLPTR static_cast<void*>(nullptr)
 
-#define NSUV_CHECK_NULL(v, r) ((v) == nullptr ? nullptr : (r))
-
 #define NSUV_OK 0
 
 /* ns_base_req */
@@ -274,7 +272,7 @@ int ns_addrinfo::get(uv_loop_t* loop,
   return uv_getaddrinfo(
       loop,
       uv_req(),
-      NSUV_CHECK_NULL(cb, (&addrinfo_proxy_<decltype(cb), D_T>)),
+      util::check_null_cb(cb, &addrinfo_proxy_<decltype(cb), D_T>),
       node,
       service,
       hints);
@@ -290,7 +288,7 @@ int ns_addrinfo::get(uv_loop_t* loop,
 
   return uv_getaddrinfo(loop,
                         uv_req(),
-                        NSUV_CHECK_NULL(cb, (&addrinfo_proxy_<decltype(cb)>)),
+                        util::check_null_cb(cb, &addrinfo_proxy_<decltype(cb)>),
                         node,
                         service,
                         hints);
@@ -370,15 +368,16 @@ int ns_fs::scandir_next(uv_dirent_t* ent) {
     return uv_fs_##name(loop,                                                  \
                         this,                                                  \
                         NSUV_PASS(P2),                                         \
-                        NSUV_CHECK_NULL(cb, (&cb_proxy_<decltype(cb)>)));      \
+                        util::check_null_cb(cb, &cb_proxy_<decltype(cb)>));    \
   }                                                                            \
   template <typename D_T>                                                      \
   int ns_fs::name(uv_loop_t* loop, NSUV_PASS(P1), ns_fs_cb_d<D_T> cb, D_T* d) {\
     ns_base_req<uv_fs_t, ns_fs>::init(loop, cb, d);                            \
-    return uv_fs_##name(loop,                                                  \
-                        this,                                                  \
-                        NSUV_PASS(P2),                                         \
-                        NSUV_CHECK_NULL(cb, (&cb_proxy_<decltype(cb), D_T>))); \
+    return uv_fs_##name(                                                       \
+      loop,                                                                    \
+      this,                                                                    \
+      NSUV_PASS(P2),                                                           \
+      util::check_null_cb(cb, &cb_proxy_<decltype(cb), D_T>));                 \
   }
 
 NSUV_FS_FN(close, (uv_file file), (file))
@@ -486,7 +485,7 @@ int ns_random::get(uv_loop_t* loop,
                    buf,
                    buflen,
                    flags,
-                   NSUV_CHECK_NULL(cb, (&random_proxy_<decltype(cb)>)));
+                   util::check_null_cb(cb, &random_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -503,7 +502,7 @@ int ns_random::get(uv_loop_t* loop,
                    buf,
                    buflen,
                    flags,
-                   NSUV_CHECK_NULL(cb, (&random_proxy_<decltype(cb), D_T>)));
+                   util::check_null_cb(cb, &random_proxy_<decltype(cb), D_T>));
 }
 
 template <typename CB_T>
@@ -538,8 +537,8 @@ int ns_work::queue_work(uv_loop_t* loop,
   return uv_queue_work(
       loop,
       this,
-      NSUV_CHECK_NULL(work_cb, (&work_proxy_<decltype(work_cb)>)),
-      NSUV_CHECK_NULL(after_cb, (&after_proxy_<decltype(after_cb)>)));
+      util::check_null_cb(work_cb, &work_proxy_<decltype(work_cb)>),
+      util::check_null_cb(after_cb, &after_proxy_<decltype(after_cb)>));
 }
 
 template <typename D_T>
@@ -556,8 +555,8 @@ int ns_work::queue_work(uv_loop_t* loop,
   return uv_queue_work(
       loop,
       this,
-      NSUV_CHECK_NULL(work_cb, (&work_proxy_<decltype(work_cb), D_T>)),
-      NSUV_CHECK_NULL(after_cb, (&after_proxy_<decltype(after_cb), D_T>)));
+      util::check_null_cb(work_cb, &work_proxy_<decltype(work_cb), D_T>),
+      util::check_null_cb(after_cb, &after_proxy_<decltype(after_cb), D_T>));
 }
 
 int ns_work::queue_work(uv_loop_t* loop, ns_work_cb work_cb) {
@@ -566,7 +565,7 @@ int ns_work::queue_work(uv_loop_t* loop, ns_work_cb work_cb) {
   return uv_queue_work(
       loop,
       this,
-      NSUV_CHECK_NULL(work_cb, (&work_proxy_<decltype(work_cb)>)),
+      util::check_null_cb(work_cb, &work_proxy_<decltype(work_cb)>),
       nullptr);
 }
 
@@ -580,7 +579,7 @@ int ns_work::queue_work(uv_loop_t* loop,
   return uv_queue_work(
       loop,
       this,
-      NSUV_CHECK_NULL(work_cb, (&work_proxy_<decltype(work_cb), D_T>)),
+      util::check_null_cb(work_cb, &work_proxy_<decltype(work_cb), D_T>),
       nullptr);
 }
 
@@ -679,7 +678,7 @@ template <class UV_T, class H_T>
 void ns_handle<UV_T, H_T>::close(ns_close_cb cb) {
   close_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   uv_close(base_handle(),
-           NSUV_CHECK_NULL(cb, (&close_proxy_<decltype(cb)>)));
+           util::check_null_cb(cb, &close_proxy_<decltype(cb)>));
 }
 
 template <class UV_T, class H_T>
@@ -688,7 +687,7 @@ void ns_handle<UV_T, H_T>::close(ns_close_cb_d<D_T> cb, D_T* data) {
   close_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   close_cb_data_ = data;
   uv_close(base_handle(),
-           NSUV_CHECK_NULL(cb, (&close_proxy_<decltype(cb), D_T>)));
+           util::check_null_cb(cb, &close_proxy_<decltype(cb), D_T>));
 }
 
 template <class UV_T, class H_T>
@@ -791,7 +790,7 @@ int ns_stream<UV_T, H_T>::listen(int backlog, ns_listen_cb cb) {
 
   return uv_listen(base_stream(),
                    backlog,
-                   NSUV_CHECK_NULL(cb, (&listen_proxy_<decltype(cb)>)));
+                   util::check_null_cb(cb, &listen_proxy_<decltype(cb)>));
 }
 
 template <class UV_T, class H_T>
@@ -804,7 +803,7 @@ int ns_stream<UV_T, H_T>::listen(int backlog,
 
   return uv_listen(base_stream(),
                    backlog,
-                   NSUV_CHECK_NULL(cb, (&listen_proxy_<decltype(cb), D_T>)));
+                   util::check_null_cb(cb, &listen_proxy_<decltype(cb), D_T>));
 }
 
 template <class UV_T, class H_T>
@@ -827,8 +826,8 @@ int ns_stream<UV_T, H_T>::read_start(ns_alloc_cb alloc_cb,
 
   return uv_read_start(
       base_stream(),
-      NSUV_CHECK_NULL(alloc_cb, (&alloc_proxy_<decltype(alloc_cb)>)),
-      NSUV_CHECK_NULL(read_cb, (&read_proxy_<decltype(read_cb)>)));
+      util::check_null_cb(alloc_cb, &alloc_proxy_<decltype(alloc_cb)>),
+      util::check_null_cb(read_cb, &read_proxy_<decltype(read_cb)>));
 }
 
 template <class UV_T, class H_T>
@@ -842,8 +841,8 @@ int ns_stream<UV_T, H_T>::read_start(ns_alloc_cb_d<D_T> alloc_cb,
 
   return uv_read_start(
       base_stream(),
-      NSUV_CHECK_NULL(alloc_cb, (&alloc_proxy_<decltype(alloc_cb), D_T>)),
-      NSUV_CHECK_NULL(read_cb, (&read_proxy_<decltype(read_cb), D_T>)));
+      util::check_null_cb(alloc_cb, &alloc_proxy_<decltype(alloc_cb), D_T>),
+      util::check_null_cb(read_cb, &read_proxy_<decltype(read_cb), D_T>));
 }
 
 template <class UV_T, class H_T>
@@ -864,7 +863,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   base_stream(),
                   req->bufs(),
                   req->size(),
-                  NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
+                  util::check_null_cb(cb, &write_proxy_<decltype(cb)>));
 }
 
 template <class UV_T, class H_T>
@@ -879,7 +878,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   base_stream(),
                   req->bufs(),
                   req->size(),
-                  NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb)>)));
+                  util::check_null_cb(cb, &write_proxy_<decltype(cb)>));
 }
 
 template <class UV_T, class H_T>
@@ -897,7 +896,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   base_stream(),
                   req->bufs(),
                   req->size(),
-                  NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
+                  util::check_null_cb(cb, &write_proxy_<decltype(cb), D_T>));
 }
 
 template <class UV_T, class H_T>
@@ -923,7 +922,7 @@ int ns_stream<UV_T, H_T>::write(ns_write<H_T>* req,
                   base_stream(),
                   req->bufs(),
                   req->size(),
-                  NSUV_CHECK_NULL(cb, (&write_proxy_<decltype(cb), D_T>)));
+                  util::check_null_cb(cb, &write_proxy_<decltype(cb), D_T>));
 }
 
 template <class UV_T, class H_T>
@@ -1015,7 +1014,7 @@ int ns_async::init(uv_loop_t* loop, ns_async_cb cb) {
 
   return uv_async_init(loop,
                        uv_handle(),
-                       NSUV_CHECK_NULL(cb, (&async_proxy_<decltype(cb)>)));
+                       util::check_null_cb(cb, &async_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -1023,9 +1022,10 @@ int ns_async::init(uv_loop_t* loop, ns_async_cb_d<D_T> cb, D_T* data) {
   async_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   async_cb_data_ = data;
 
-  return uv_async_init(loop,
-                       uv_handle(),
-                       NSUV_CHECK_NULL(cb, (&async_proxy_<decltype(cb), D_T>)));
+  return uv_async_init(
+    loop,
+    uv_handle(),
+    util::check_null_cb(cb, &async_proxy_<decltype(cb), D_T>));
 }
 
 int ns_async::init(uv_loop_t* loop,
@@ -1072,7 +1072,7 @@ int ns_poll::start(int events, ns_poll_cb cb) {
 
   return uv_poll_start(uv_handle(),
                        events,
-                       NSUV_CHECK_NULL(cb, (&poll_proxy_<decltype(cb)>)));
+                       util::check_null_cb(cb, &poll_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -1082,9 +1082,10 @@ int ns_poll::start(int events,
   poll_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   poll_cb_data_ = data;
 
-  return uv_poll_start(uv_handle(),
-                       events,
-                       NSUV_CHECK_NULL(cb, (&poll_proxy_<decltype(cb), D_T>)));
+  return uv_poll_start(
+    uv_handle(),
+    events,
+    util::check_null_cb(cb, &poll_proxy_<decltype(cb), D_T>));
 }
 
 int ns_poll::start(int events,
@@ -1154,7 +1155,7 @@ int ns_tcp::close_reset(ns_close_cb cb) {
   close_reset_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   return uv_tcp_close_reset(
       uv_handle(),
-      NSUV_CHECK_NULL(cb, (&close_reset_proxy_<decltype(cb)>)));
+      util::check_null_cb(cb, &close_reset_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -1164,7 +1165,7 @@ int ns_tcp::close_reset(ns_close_cb_d<D_T> cb, D_T* data) {
 
   return uv_tcp_close_reset(
       uv_handle(),
-      NSUV_CHECK_NULL(cb, (&close_reset_proxy_<decltype(cb), D_T>)));
+      util::check_null_cb(cb, &close_reset_proxy_<decltype(cb), D_T>));
 }
 
 int ns_tcp::close_reset(void (*cb)(ns_tcp*, void*), std::nullptr_t) {
@@ -1182,7 +1183,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
       req->uv_req(),
       uv_handle(),
       addr,
-      NSUV_CHECK_NULL(cb, (&connect_proxy_<decltype(cb)>)));
+      util::check_null_cb(cb, &connect_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -1198,7 +1199,7 @@ int ns_tcp::connect(ns_connect<ns_tcp>* req,
       req->uv_req(),
       uv_handle(),
       addr,
-      NSUV_CHECK_NULL(cb, (&connect_proxy_<decltype(cb), D_T>)));
+      util::check_null_cb(cb, &connect_proxy_<decltype(cb), D_T>));
 }
 
 int ns_tcp::connect(ns_connect<ns_tcp>* req,
@@ -1249,7 +1250,7 @@ int ns_timer::start(ns_timer_cb cb, uint64_t timeout, uint64_t repeat) {
   timer_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_timer_start(uv_handle(),
-                        NSUV_CHECK_NULL(cb, (&timer_proxy_<decltype(cb)>)),
+                        util::check_null_cb(cb, &timer_proxy_<decltype(cb)>),
                         timeout,
                         repeat);
 }
@@ -1262,10 +1263,11 @@ int ns_timer::start(ns_timer_cb_d<D_T> cb,
   timer_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
   timer_cb_data_ = data;
 
-  return uv_timer_start(uv_handle(),
-                        NSUV_CHECK_NULL(cb, (&timer_proxy_<decltype(cb), D_T>)),
-                        timeout,
-                        repeat);
+  return uv_timer_start(
+    uv_handle(),
+    util::check_null_cb(cb, &timer_proxy_<decltype(cb), D_T>),
+    timeout,
+    repeat);
 }
 
 int ns_timer::start(void (*cb)(ns_timer*, void*),
@@ -1313,7 +1315,7 @@ void ns_timer::timer_proxy_(uv_timer_t* handle) {
     name##_cb_ptr_ = reinterpret_cast<void (*)()>(cb);                         \
     return uv_##name##_start(                                                  \
         uv_handle(),                                                           \
-        NSUV_CHECK_NULL(cb, (&name##_proxy_<decltype(cb)>)));                  \
+        util::check_null_cb(cb, &name##_proxy_<decltype(cb)>));                \
   }                                                                            \
                                                                                \
   template <typename D_T>                                                      \
@@ -1324,7 +1326,7 @@ void ns_timer::timer_proxy_(uv_timer_t* handle) {
     name##_cb_data_ = data;                                                    \
     return uv_##name##_start(                                                  \
         uv_handle(),                                                           \
-        NSUV_CHECK_NULL(cb, (&name##_proxy_<decltype(cb), D_T>)));             \
+        util::check_null_cb(cb, &name##_proxy_<decltype(cb), D_T>));           \
   }                                                                            \
                                                                                \
   int ns_##name::start(void (*cb)(ns_##name*, void*), std::nullptr_t) {        \
@@ -1471,7 +1473,7 @@ int ns_udp::send(ns_udp_send* req,
                      req->bufs(),
                      req->size(),
                      addr,
-                     NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
+                     util::check_null_cb(cb, &send_proxy_<decltype(cb)>));
 }
 
 int ns_udp::send(ns_udp_send* req,
@@ -1487,7 +1489,7 @@ int ns_udp::send(ns_udp_send* req,
                      req->bufs(),
                      req->size(),
                      addr,
-                     NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb)>)));
+                     util::check_null_cb(cb, &send_proxy_<decltype(cb)>));
 }
 
 template <typename D_T>
@@ -1506,7 +1508,7 @@ int ns_udp::send(ns_udp_send* req,
                      req->bufs(),
                      req->size(),
                      addr,
-                     NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
+                     util::check_null_cb(cb, &send_proxy_<decltype(cb), D_T>));
 }
 
 int ns_udp::send(ns_udp_send* req,
@@ -1533,7 +1535,7 @@ int ns_udp::send(ns_udp_send* req,
                      req->bufs(),
                      req->size(),
                      addr,
-                     NSUV_CHECK_NULL(cb, (&send_proxy_<decltype(cb), D_T>)));
+                     util::check_null_cb(cb, &send_proxy_<decltype(cb), D_T>));
 }
 
 int ns_udp::send(ns_udp_send* req,
@@ -1727,7 +1729,7 @@ int ns_thread::create(ns_thread_cb cb) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
 
   return uv_thread_create(&thread_,
-                          NSUV_CHECK_NULL(cb, (&create_proxy_<decltype(cb)>)),
+                          util::check_null_cb(cb, &create_proxy_<decltype(cb)>),
                           this);
 }
 
@@ -1738,7 +1740,7 @@ int ns_thread::create(ns_thread_cb_d<D_T> cb, D_T* data) {
 
   return uv_thread_create(
       &thread_,
-      NSUV_CHECK_NULL(cb, (&create_proxy_<decltype(cb), D_T>)),
+      util::check_null_cb(cb, &create_proxy_<decltype(cb), D_T>),
       this);
 }
 
@@ -1753,7 +1755,7 @@ int ns_thread::create_ex(const uv_thread_options_t* params,
   return uv_thread_create_ex(
       &thread_,
       params,
-      NSUV_CHECK_NULL(cb, (&create_proxy_<decltype(cb)>)),
+      util::check_null_cb(cb, &create_proxy_<decltype(cb)>),
       this);
 }
 
@@ -1767,7 +1769,7 @@ int ns_thread::create_ex(const uv_thread_options_t* params,
   return uv_thread_create_ex(
       &thread_,
       params,
-      NSUV_CHECK_NULL(cb, (&create_proxy_<decltype(cb), D_T>)),
+      util::check_null_cb(cb, &create_proxy_<decltype(cb), D_T>),
       this);
 }
 
@@ -1848,6 +1850,12 @@ int util::addr_size(const struct sockaddr* addr) {
   return len;
 }
 
+template <typename T, typename U>
+T util::check_null_cb(U cb, T proxy) {
+  if (cb == nullptr) return nullptr;
+  return proxy;
+}
+
 template <class T>
 util::no_throw_vec<T>::~no_throw_vec() {
   if (data_ != datasml_)
@@ -1905,7 +1913,6 @@ int util::no_throw_vec<T>::replace(const T* b, size_t n) {
   return NSUV_OK;
 }
 
-#undef NSUV_CHECK_NULL
 #undef NSUV_CAST_NULLPTR
 
 }  // namespace nsuv
