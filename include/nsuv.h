@@ -76,7 +76,7 @@ class ns_thread;
 
 namespace util {
 
-static NSUV_INLINE int addr_size(const struct sockaddr*);
+NSUV_INLINE int addr_size(const struct sockaddr*);
 
 template <typename T, typename U>
 T check_null_cb(U cb, T proxy);
