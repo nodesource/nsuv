@@ -626,7 +626,7 @@ uv_handle_t* ns_handle<UV_T, H_T>::base_handle() {
 
 template <class UV_T, class H_T>
 uv_loop_t* ns_handle<UV_T, H_T>::get_loop() {
-  return uv_handle_get_loop(base_handle());
+  return base_handle()->loop;
 }
 
 template <class UV_T, class H_T>
