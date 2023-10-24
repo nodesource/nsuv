@@ -92,9 +92,9 @@ class no_throw_vec {
   NSUV_INLINE int replace(const T* b, size_t n);
  private:
   T datasml_[4];  // match uv_write_t::bufsml.
-  T* data_ = nullptr;
+  T* data_ = &datasml_[0];
   size_t size_ = 0;
-  size_t capacity_ = 0;
+  size_t capacity_ = sizeof(datasml_) / sizeof(datasml_[0]);
 };
 
 }  // namespace util
