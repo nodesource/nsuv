@@ -2,6 +2,7 @@
 #define INCLUDE_NSUV_H_
 
 #include <uv.h>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -74,6 +75,9 @@ class ns_mutex;
 class ns_rwlock;
 class ns_thread;
 
+using deleter_sig = void(*)(void*);
+using user_data = std::unique_ptr<void, deleter_sig>;
+
 namespace util {
 
 NSUV_INLINE int addr_size(const struct sockaddr*);
@@ -133,6 +137,8 @@ class ns_base_req : public UV_T {
   uv_loop_t* loop_ = nullptr;
 };
 
+template <typename G>
+void delete_proxy_(void* g);
 
 /**
  * UV_T - uv_<type>_t this class inherits.
@@ -876,22 +882,16 @@ class ns_rwlock {
 
 class ns_thread {
  public:
+  using create_proxy_sig = void(*)(ns_thread*, void*);
   NSUV_CB_FNS(ns_thread_cb, ns_thread*)
 
-  NSUV_INLINE NSUV_WUR int create(ns_thread_cb cb);
-  template <typename D_T>
-  NSUV_INLINE NSUV_WUR int create(ns_thread_cb_d<D_T> cb, D_T* data);
-  NSUV_INLINE NSUV_WUR int create(void (*cb)(ns_thread*, void*),
-                                  std::nullptr_t);
+  template <typename Cb, typename... Data>
+  NSUV_INLINE NSUV_WUR int create(Cb&& cb, Data&&... data);
+
+  template <typename Cb, typename... Data>
   NSUV_INLINE NSUV_WUR int create_ex(const uv_thread_options_t* params,
-                                     ns_thread_cb cb);
-  template <typename D_T>
-  NSUV_INLINE NSUV_WUR int create_ex(const uv_thread_options_t* params,
-                                     ns_thread_cb_d<D_T> cb,
-                                     D_T* data);
-  NSUV_INLINE NSUV_WUR int create_ex(const uv_thread_options_t* params,
-                                     void (*cb)(ns_thread*, void*),
-                                     std::nullptr_t);
+                                     Cb&& cb,
+                                     Data&&... data);
   NSUV_INLINE NSUV_WUR int join();
   NSUV_INLINE uv_thread_t base();
   NSUV_INLINE NSUV_WUR bool equal(uv_thread_t* t2);
@@ -903,11 +903,12 @@ class ns_thread {
   static NSUV_INLINE uv_thread_t self();
 
  private:
-  NSUV_PROXY_FNS(create_proxy_, void* arg)
+  template <typename G>
+  static void create_proxy_(ns_thread* thread, void* g);
 
   uv_thread_t thread_;
-  void (*thread_cb_ptr_)() = nullptr;
-  void* thread_cb_data_ = nullptr;
+  user_data user_data_ = user_data(nullptr, nullptr);
+  create_proxy_sig cb_ = nullptr;
 };
 
 }  // namespace nsuv

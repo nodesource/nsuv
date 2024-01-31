@@ -18,6 +18,11 @@ namespace nsuv {
 
 #define NSUV_OK 0
 
+template <typename G>
+void delete_proxy_(void* g) {
+  delete static_cast<G*>(g);
+}
+
 /* ns_base_req */
 
 template <class UV_T, class R_T>
@@ -1725,58 +1730,46 @@ ns_rwlock::scoped_wrlock::~scoped_wrlock() {
 
 /* ns_thread */
 
-int ns_thread::create(ns_thread_cb cb) {
-  thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+template <typename Cb, typename... Data>
+int ns_thread::create(Cb&& cb, Data&&... data) {
+  using namespace std::placeholders;
+  using UserData = decltype(std::bind(
+        std::forward<Cb>(cb), _1, std::forward<Data>(data)...));
+  // _1 - nsuv::ns_thread*
+  UserData* cb_data = new (std::nothrow) UserData(
+      std::bind(std::forward<Cb>(cb), _1, std::forward<Data>(data)...));
+  if (cb_data == nullptr) {
+    return UV_ENOMEM;
+  }
 
-  return uv_thread_create(&thread_,
-                          util::check_null_cb(cb, &create_proxy_<decltype(cb)>),
-                          this);
+  cb_ = create_proxy_<UserData>;
+  user_data_ = user_data(cb_data, delete_proxy_<UserData>);
+  return uv_thread_create(&thread_, [](void* arg) {
+     ns_thread* thr = static_cast<ns_thread*>(arg);
+     thr->cb_(thr, thr->user_data_.get());
+  }, this);
 }
 
-template <typename D_T>
-int ns_thread::create(ns_thread_cb_d<D_T> cb, D_T* data) {
-  thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
-  thread_cb_data_ = data;
-
-  return uv_thread_create(
-      &thread_,
-      util::check_null_cb(cb, &create_proxy_<decltype(cb), D_T>),
-      this);
-}
-
-int ns_thread::create(void (*cb)(ns_thread*, void*), std::nullptr_t) {
-  return create(cb, NSUV_CAST_NULLPTR);
-}
-
+template <typename Cb, typename... Data>
 int ns_thread::create_ex(const uv_thread_options_t* params,
-                         ns_thread_cb cb) {
-  thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+                         Cb&& cb,
+                         Data&&... data) {
+  using namespace std::placeholders;
+  using UserData = decltype(std::bind(
+        std::forward<Cb>(cb), _1, std::forward<Data>(data)...));
+  // _1 - nsuv::ns_thread*
+  UserData* cb_data = new (std::nothrow) UserData(
+      std::bind(std::forward<Cb>(cb), _1, std::forward<Data>(data)...));
+  if (cb_data == nullptr) {
+    return UV_ENOMEM;
+  }
 
-  return uv_thread_create_ex(
-      &thread_,
-      params,
-      util::check_null_cb(cb, &create_proxy_<decltype(cb)>),
-      this);
-}
-
-template <typename D_T>
-int ns_thread::create_ex(const uv_thread_options_t* params,
-                         ns_thread_cb_d<D_T> cb,
-                         D_T* data) {
-  thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
-  thread_cb_data_ = data;
-
-  return uv_thread_create_ex(
-      &thread_,
-      params,
-      util::check_null_cb(cb, &create_proxy_<decltype(cb), D_T>),
-      this);
-}
-
-int ns_thread::create_ex(const uv_thread_options_t* params,
-                         void (*cb)(ns_thread*, void*),
-                         std::nullptr_t) {
-  return create_ex(params, cb, NSUV_CAST_NULLPTR);
+  cb_ = create_proxy_<UserData>;
+  user_data_ = user_data(cb_data, delete_proxy_<UserData>);
+  return uv_thread_create_ex(&thread_, params, [](void* arg) {
+     ns_thread* thr = static_cast<ns_thread*>(arg);
+     thr->cb_(thr, thr->user_data_.get());
+  }, this);
 }
 
 int ns_thread::join() {
@@ -1815,18 +1808,9 @@ uv_thread_t ns_thread::self() {
   return uv_thread_self();
 }
 
-template <typename CB_T>
-void ns_thread::create_proxy_(void* arg) {
-  auto* wrap = static_cast<ns_thread*>(arg);
-  auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
-  cb_(wrap);
-}
-
-template <typename CB_T, typename D_T>
-void ns_thread::create_proxy_(void* arg) {
-  auto* wrap = static_cast<ns_thread*>(arg);
-  auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
-  cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
+template <typename G>
+void ns_thread::create_proxy_(ns_thread* thread, void* g) {
+  (*static_cast<G*>(g))(thread);
 }
 
 int util::addr_size(const struct sockaddr* addr) {
