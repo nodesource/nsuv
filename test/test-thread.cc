@@ -139,7 +139,26 @@ static void thread_entry(ns_thread* thread, size_t* arg) {
 TEST_CASE("thread_create", "[thread]") {
   ns_thread thread;
   size_t arg[] = { 42 };
+  thread_called = 0;
   ASSERT_EQ(0, thread.create(thread_entry, arg));
+  ASSERT_EQ(0, thread.join());
+  ASSERT_EQ(1, thread_called);
+  ASSERT(thread.equal(uv_thread_self()));
+}
+
+
+static void thread_entry_sp(ns_thread* thread, std::shared_ptr<size_t> arg) {
+  CHECK(!thread->equal(uv_thread_self()));
+  CHECK(*arg == 42);
+  thread_called++;
+}
+
+
+TEST_CASE("thread_create_sp", "[thread]") {
+  ns_thread thread;
+  std::shared_ptr<size_t> arg = std::make_shared<size_t>(42);
+  thread_called = 0;
+  ASSERT_EQ(0, thread.create(thread_entry_sp, arg));
   ASSERT_EQ(0, thread.join());
   ASSERT_EQ(1, thread_called);
   ASSERT(thread.equal(uv_thread_self()));
@@ -200,10 +219,49 @@ static void thread_check_stack(ns_thread*, uv_thread_options_t* arg) {
 }
 
 
+static void thread_check_stack_sp(ns_thread*,
+                                  std::shared_ptr<uv_thread_options_t> arg) {
+#if defined(__APPLE__)
+  size_t expected;
+  expected = arg == nullptr ? 0 :
+    (reinterpret_cast<uv_thread_options_t*>(arg.get()))->stack_size;
+  /* 512 kB is the default stack size of threads other than the main thread
+   * on MacOS. */
+  if (expected == 0)
+    expected = 512 * 1024;
+  CHECK(pthread_get_stacksize_np(pthread_self()) >= expected);
+#elif defined(__linux__) && defined(__GLIBC__)
+  size_t expected;
+  struct rlimit lim;
+  size_t stack_size;
+  pthread_attr_t attr;
+  CHECK(0 == getrlimit(RLIMIT_STACK, &lim));
+  if (lim.rlim_cur == RLIM_INFINITY)
+    lim.rlim_cur = 2 << 20;  /* glibc default. */
+  CHECK(0 == pthread_getattr_np(pthread_self(), &attr));
+  CHECK(0 == pthread_attr_getstacksize(&attr, &stack_size));
+  expected = arg == nullptr ? 0 :
+    (reinterpret_cast<uv_thread_options_t*>(arg.get()))->stack_size;
+  if (expected == 0)
+    expected = (size_t)lim.rlim_cur;
+  CHECK(stack_size >= expected);
+  CHECK(0 == pthread_attr_destroy(&attr));
+#endif
+}
+
+
 TEST_CASE("thread_stack_size", "[thread]") {
   ns_thread thread;
   uv_thread_options_t* arg = nullptr;
   ASSERT_EQ(0, thread.create(thread_check_stack, arg));
+  ASSERT_EQ(0, thread.join());
+}
+
+
+TEST_CASE("thread_stack_size_sp", "[thread]") {
+  ns_thread thread;
+  std::shared_ptr<uv_thread_options_t> arg = { nullptr };
+  ASSERT_EQ(0, thread.create(thread_check_stack_sp, arg));
   ASSERT_EQ(0, thread.join());
 }
 

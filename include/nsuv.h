@@ -877,12 +877,17 @@ class ns_rwlock {
 class ns_thread {
  public:
   NSUV_CB_FNS(ns_thread_cb, ns_thread*)
+  template <typename D_T>
+  using ns_thread_cb_sp = void(ns_thread*, std::shared_ptr<D_T>);
 
   NSUV_INLINE NSUV_WUR int create(ns_thread_cb cb);
   template <typename D_T>
   NSUV_INLINE NSUV_WUR int create(ns_thread_cb_d<D_T> cb, D_T* data);
   NSUV_INLINE NSUV_WUR int create(void (*cb)(ns_thread*, void*),
                                   std::nullptr_t);
+  template <typename D_T>
+  NSUV_INLINE NSUV_WUR int create(ns_thread_cb_sp<D_T> cb,
+                                  std::shared_ptr<D_T> data);
   NSUV_INLINE NSUV_WUR int create_ex(const uv_thread_options_t* params,
                                      ns_thread_cb cb);
   template <typename D_T>
@@ -904,10 +909,13 @@ class ns_thread {
 
  private:
   NSUV_PROXY_FNS(create_proxy_, void* arg)
+  template <typename CB_T, typename D_T>
+  static void create_proxy_sp_(void* arg);
 
   uv_thread_t thread_;
   void (*thread_cb_ptr_)() = nullptr;
   void* thread_cb_data_ = nullptr;
+  std::shared_ptr<void> thread_cb_sp_ = { nullptr };
 };
 
 }  // namespace nsuv

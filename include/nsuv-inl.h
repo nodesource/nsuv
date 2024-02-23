@@ -1748,6 +1748,17 @@ int ns_thread::create(void (*cb)(ns_thread*, void*), std::nullptr_t) {
   return create(cb, NSUV_CAST_NULLPTR);
 }
 
+template <typename D_T>
+int ns_thread::create(ns_thread_cb_sp<D_T> cb, std::shared_ptr<D_T> data) {
+  thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
+  thread_cb_sp_ = data;
+
+  return uv_thread_create(
+      &thread_,
+      &create_proxy_sp_<decltype(cb), D_T>,
+      this);
+}
+
 int ns_thread::create_ex(const uv_thread_options_t* params,
                          ns_thread_cb cb) {
   thread_cb_ptr_ = reinterpret_cast<void (*)()>(cb);
@@ -1827,6 +1838,15 @@ void ns_thread::create_proxy_(void* arg) {
   auto* wrap = static_cast<ns_thread*>(arg);
   auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
   cb_(wrap, static_cast<D_T*>(wrap->thread_cb_data_));
+}
+
+template <typename CB_T, typename D_T>
+void ns_thread::create_proxy_sp_(void* arg) {
+  auto* wrap = static_cast<ns_thread*>(arg);
+  auto* cb_ = reinterpret_cast<CB_T>(wrap->thread_cb_ptr_);
+  cb_(wrap, std::static_pointer_cast<D_T>(wrap->thread_cb_sp_));
+  // Make sure to not hang onto a reference of the shared_ptr.
+  wrap->thread_cb_sp_ = nullptr;
 }
 
 int util::addr_size(const struct sockaddr* addr) {
