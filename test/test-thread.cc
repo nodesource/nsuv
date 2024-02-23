@@ -147,18 +147,21 @@ TEST_CASE("thread_create", "[thread]") {
 }
 
 
-static void thread_entry_sp(ns_thread* thread, std::shared_ptr<size_t> arg) {
+static void thread_entry_wp(ns_thread* thread, std::weak_ptr<size_t> arg) {
   CHECK(!thread->equal(uv_thread_self()));
-  CHECK(*arg == 42);
+  auto shared_arg = arg.lock();
+  CHECK(shared_arg);
+  CHECK(*shared_arg == 42);
   thread_called++;
 }
 
 
-TEST_CASE("thread_create_sp", "[thread]") {
+TEST_CASE("thread_create_wp", "[thread]") {
   ns_thread thread;
   std::shared_ptr<size_t> arg = std::make_shared<size_t>(42);
+  std::weak_ptr<size_t> weak_arg = arg;
   thread_called = 0;
-  ASSERT_EQ(0, thread.create(thread_entry_sp, arg));
+  ASSERT_EQ(0, thread.create(thread_entry_wp, weak_arg));
   ASSERT_EQ(0, thread.join());
   ASSERT_EQ(1, thread_called);
   ASSERT(thread.equal(uv_thread_self()));
@@ -219,11 +222,12 @@ static void thread_check_stack(ns_thread*, uv_thread_options_t* arg) {
 }
 
 
-static void thread_check_stack_sp(ns_thread*,
-                                  std::shared_ptr<uv_thread_options_t> arg) {
+static void thread_check_stack_wp(ns_thread*,
+                                  std::weak_ptr<uv_thread_options_t> arg) {
 #if defined(__APPLE__)
   size_t expected;
-  expected = arg == nullptr ? 0 :
+  std::shared_ptr<uv_thread_options_t> shared_arg = arg.lock();
+  expected = shared_arg == nullptr ? 0 :
     (reinterpret_cast<uv_thread_options_t*>(arg.get()))->stack_size;
   /* 512 kB is the default stack size of threads other than the main thread
    * on MacOS. */
@@ -240,8 +244,9 @@ static void thread_check_stack_sp(ns_thread*,
     lim.rlim_cur = 2 << 20;  /* glibc default. */
   CHECK(0 == pthread_getattr_np(pthread_self(), &attr));
   CHECK(0 == pthread_attr_getstacksize(&attr, &stack_size));
-  expected = arg == nullptr ? 0 :
-    (reinterpret_cast<uv_thread_options_t*>(arg.get()))->stack_size;
+  std::shared_ptr<uv_thread_options_t> shared_arg = arg.lock();
+  expected = shared_arg == nullptr ? 0 :
+    (reinterpret_cast<uv_thread_options_t*>(shared_arg.get()))->stack_size;
   if (expected == 0)
     expected = (size_t)lim.rlim_cur;
   CHECK(stack_size >= expected);
@@ -261,7 +266,8 @@ TEST_CASE("thread_stack_size", "[thread]") {
 TEST_CASE("thread_stack_size_sp", "[thread]") {
   ns_thread thread;
   std::shared_ptr<uv_thread_options_t> arg = { nullptr };
-  ASSERT_EQ(0, thread.create(thread_check_stack_sp, arg));
+  std::weak_ptr<uv_thread_options_t> weak_arg = arg;
+  ASSERT_EQ(0, thread.create(thread_check_stack_wp, weak_arg));
   ASSERT_EQ(0, thread.join());
 }
 
