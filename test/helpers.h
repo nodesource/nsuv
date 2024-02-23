@@ -33,6 +33,12 @@ constexpr char kTestPipename3[] = "/tmp/uv-test-sock3";
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
+// Because nsuv has a void* overload C++ doesn't know how to properly cast from
+// a std::shared_ptr to std::weak_ptr implicitly. Create a macro so we can do it
+// inline.
+// NOLINTNEXTLINE
+#define TO_WEAK(a) (std::weak_ptr<typename std::remove_pointer<decltype((a).get())>::type>(a))
+
 // TODO(trevnorris): This is temporary while libuv tests are being ported. A
 // more permanent solution should be made.
 #define container_of(ptr, type, member)                                       \
