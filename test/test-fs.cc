@@ -354,9 +354,9 @@ static void check_utime(const char* path,
     ASSERT_DOUBLE_EQ(atime, static_cast<uint32_t>(atime));
     ASSERT_DOUBLE_EQ(mtime, static_cast<uint32_t>(atime));
 #endif
-    if (atime > 0 || static_cast<uint32_t>(atime == atime))
+    if (atime > 0 || static_cast<uint32_t>(atime) == atime)
       ASSERT_EQ(s->st_atim.tv_sec, static_cast<uint32_t>(atime));
-    if (mtime > 0 || static_cast<uint32_t>(mtime == mtime))
+    if (mtime > 0 || static_cast<uint32_t>(mtime) == mtime)
       ASSERT_EQ(s->st_mtim.tv_sec, static_cast<uint32_t>(mtime));
     ASSERT_GE(s->st_atim.tv_sec, static_cast<uint32_t>(atime) - 1);
     ASSERT_GE(s->st_mtim.tv_sec, static_cast<uint32_t>(mtime) - 1);
