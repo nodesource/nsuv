@@ -965,7 +965,7 @@ void ns_stream<UV_T, H_T>::alloc_proxy_(uv_handle_t* handle,
                                         size_t suggested_size,
                                         uv_buf_t* buf) {
   auto* server = H_T::cast(handle);
-  auto* cb_ = reinterpret_cast<CB_T>(server->listen_cb_ptr_);
+  auto* cb_ = reinterpret_cast<CB_T>(server->alloc_cb_ptr_);
   cb_(server, suggested_size, buf, static_cast<D_T*>(server->read_cb_data_));
 }
 
